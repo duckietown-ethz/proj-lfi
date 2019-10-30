@@ -1,0 +1,24 @@
+
+<launch>
+
+	<arg name="veh"/>
+	<arg name="ai_interval" default="10" doc="time interval after which the ai algorithm should be re-performed"/>
+	<arg name="resize" default="0.2" doc="resizing factor to scale the image down or up"/>
+    <arg name="cb_percentage" default="0.8" doc="percentage for auto-colorbalance"/>
+    <arg name="scale_percent" default="0.4" doc="resizing factor to scale the image down or up during calculating parameters"/>
+
+    <param name="~veh" value="$(arg veh)"/>
+
+	<group ns="$(arg veh)">
+
+        <node name="anti_instagram_node" pkg="anti_instagram" type="anti_instagram_node.py" output="screen">
+            <param name="~ai_interval" value="$(arg ai_interval)"/>
+            <param name="~resize" type="double" value="$(arg resize)"/>
+            <param name="~scale_percentage" type="double" value="$(arg resize)"/>
+	        <param name="~cb_percentage" type="double" value="$(arg cb_percentage)"/>
+            <remap from="anti_instagram_node/uncorrected_image/compressed" to="camera_node/image/compressed"/>
+        </node>
+
+    </group>
+
+</launch>
