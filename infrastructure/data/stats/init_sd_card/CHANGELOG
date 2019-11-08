@@ -1,0 +1,43 @@
+
+Current version: 2.0.5
+
+Semantic versioning: x.y.z
+
+Breaking changes augment x,
+feature additions augment y,
+minor changes increment z.
+
+Newest changes applied to this SD CARD:
+
+2.0.5 - 2019-07-07
+
+    Initial boot-up LED feedback: alternating red-green
+    during stacks initialization, solid green when ready
+
+2.0.4 - 2019-04-11
+
+    Copy in the default calibrations
+
+2.0.3 - 2018-10-10
+
+    Correct initialization for camera (on is 0 , not 1)
+
+
+2.0.2 - 2018-10-10
+
+    More documentation.
+
+2.0.1 - 2018-10-10
+
+    Added card version files in /data/stats/init_sd_card
+
+    Set LED config to red
+
+    Fixed config.txt
+
+
+You can quickly check if something else was done at the URL:
+
+    https://github.com/duckietown/duckietown-shell-commands/blob/master/init_sd_card/command.py
+
+

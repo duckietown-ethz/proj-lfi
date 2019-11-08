@@ -1,0 +1,72 @@
+{"cmd": "echo \"Initialization STARTED\"", "msg": "running command", "pos": 10}
+{"cmd": "echo \"Initialization STARTED\"", "msg": "finished command", "pos": 12}
+{"cmd": "date -s \"2019-09-27 08:04:04\"", "msg": "running command", "pos": 13}
+{"cmd": "date -s \"2019-09-27 08:04:04\"", "msg": "finished command", "pos": 15}
+{"cmd": "chown -R 1000:1000 /home/duckie/", "msg": "running command", "pos": 16}
+{"cmd": "chown -R 1000:1000 /home/duckie/", "msg": "finished command", "pos": 18}
+{"cmd": "dd if=/dev/zero of=/swap0 bs=1M count=2048", "msg": "running command", "pos": 19}
+{"cmd": "dd if=/dev/zero of=/swap0 bs=1M count=2048", "msg": "finished command", "pos": 21}
+{"cmd": "mkswap /swap0", "msg": "running command", "pos": 22}
+{"cmd": "mkswap /swap0", "msg": "finished command", "pos": 24}
+{"cmd": "echo \"/swap0 swap swap\" >> /etc/fstab", "msg": "running command", "pos": 25}
+{"cmd": "echo \"/swap0 swap swap\" >> /etc/fstab", "msg": "finished command", "pos": 27}
+{"cmd": "chmod 0600 /swap0", "msg": "running command", "pos": 28}
+{"cmd": "chmod 0600 /swap0", "msg": "finished command", "pos": 30}
+{"cmd": "swapon -a", "msg": "running command", "pos": 31}
+{"cmd": "swapon -a", "msg": "finished command", "pos": 33}
+{"cmd": "raspi-config nonint do_camera 0", "msg": "running command", "pos": 34}
+{"cmd": "raspi-config nonint do_camera 0", "msg": "finished command", "pos": 36}
+{"cmd": "raspi-config nonint do_i2c 0", "msg": "running command", "pos": 37}
+{"cmd": "raspi-config nonint do_i2c 0", "msg": "finished command", "pos": 39}
+{"cmd": "/bin/bash -c \"while ! cat /data/boot-log.txt | grep -q 'All stacks up'; do echo 1 | sudo tee /sys/class/leds/led0/brightness > /dev/null; echo 0 | sudo tee /sys/class/leds/led1/brightness > /dev/null; sleep 0.5; echo 0 | sudo tee /sys/class/leds/led0/brightness > /dev/null; echo 1 | sudo tee /sys/class/leds/led1/brightness > /dev/null; sleep 0.5; done; echo 1 | sudo tee /sys/class/leds/led0/brightness > /dev/null; echo 0 | sudo tee /sys/class/leds/led1/brightness > /dev/null\" > /dev/null 2>&1 & ", "msg": "running command", "pos": 40}
+{"cmd": "/bin/bash -c \"while ! cat /data/boot-log.txt | grep -q 'All stacks up'; do echo 1 | sudo tee /sys/class/leds/led0/brightness > /dev/null; echo 0 | sudo tee /sys/class/leds/led1/brightness > /dev/null; sleep 0.5; echo 0 | sudo tee /sys/class/leds/led0/brightness > /dev/null; echo 1 | sudo tee /sys/class/leds/led1/brightness > /dev/null; sleep 0.5; done; echo 1 | sudo tee /sys/class/leds/led0/brightness > /dev/null; echo 0 | sudo tee /sys/class/leds/led1/brightness > /dev/null\" > /dev/null 2>&1 & ", "msg": "finished command", "pos": 42}
+{"cmd": "cat /sys/class/net/eth0/address > /data/stats/MAC/eth0", "msg": "running command", "pos": 43}
+{"cmd": "cat /sys/class/net/eth0/address > /data/stats/MAC/eth0", "msg": "finished command", "pos": 45}
+{"cmd": "cat /sys/class/net/wlan0/address > /data/stats/MAC/wlan0", "msg": "running command", "pos": 46}
+{"cmd": "cat /sys/class/net/wlan0/address > /data/stats/MAC/wlan0", "msg": "finished command", "pos": 48}
+{"cmd": "docker load --input /var/local/DT18_00_basic-9ac17711.tar && rm /var/local/DT18_00_basic-9ac17711.tar", "msg": "running command", "pos": 50}
+{"cmd": "docker load --input /var/local/DT18_00_basic-9ac17711.tar && rm /var/local/DT18_00_basic-9ac17711.tar", "msg": "finished command", "pos": 52}
+{"cmd": ["docker", "tag", "sha256:036ea1099d35928884d57c4fc4c26b23dca73b77a4abf541bac76c5a6ac05e47", "portainer/portainer:linux-arm"], "msg": "running command", "pos": 53}
+{"cmd": ["docker", "tag", "sha256:036ea1099d35928884d57c4fc4c26b23dca73b77a4abf541bac76c5a6ac05e47", "portainer/portainer:linux-arm"], "msg": "finished command", "pos": 55}
+{"cmd": ["docker", "tag", "sha256:b74a792de471c9652fb9456071f207eec88cd39dfb17d883d9b755ade5a40d24", "v2tec/watchtower:armhf-latest"], "msg": "running command", "pos": 56}
+{"cmd": ["docker", "tag", "sha256:b74a792de471c9652fb9456071f207eec88cd39dfb17d883d9b755ade5a40d24", "v2tec/watchtower:armhf-latest"], "msg": "finished command", "pos": 58}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_00_basic.yaml", "-p", "DT18_00_basic", "up", "-d"], "msg": "running command", "pos": 60}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_00_basic.yaml", "-p", "DT18_00_basic", "up", "-d"], "msg": "finished command", "pos": 62}
+{"cmd": "docker load --input /var/local/DT18_01_health_stats-0c7bfe84.tar && rm /var/local/DT18_01_health_stats-0c7bfe84.tar", "msg": "running command", "pos": 64}
+{"cmd": "docker load --input /var/local/DT18_01_health_stats-0c7bfe84.tar && rm /var/local/DT18_01_health_stats-0c7bfe84.tar", "msg": "finished command", "pos": 66}
+{"cmd": ["docker", "tag", "sha256:fe4f149c3646cacc9bffe3d8ec524b32a212ce48b217871d65f273476b88edbe", "duckietown/rpi-simple-server:master18"], "msg": "running command", "pos": 67}
+{"cmd": ["docker", "tag", "sha256:fe4f149c3646cacc9bffe3d8ec524b32a212ce48b217871d65f273476b88edbe", "duckietown/rpi-simple-server:master18"], "msg": "finished command", "pos": 69}
+{"cmd": ["docker", "tag", "sha256:2269ddbb897bafaec75ad3ba6c46a5b0876e6eb29fbb6045e79682a2249ac942", "duckietown/rpi-health:master18"], "msg": "running command", "pos": 70}
+{"cmd": ["docker", "tag", "sha256:2269ddbb897bafaec75ad3ba6c46a5b0876e6eb29fbb6045e79682a2249ac942", "duckietown/rpi-health:master18"], "msg": "finished command", "pos": 72}
+{"cmd": ["docker", "tag", "sha256:2784311b814c9c1016dc7dcec83ec31e98f8566e02c46ebd3abd328dccde0217", "duckietown/rpi-duckiebot-online:master18"], "msg": "running command", "pos": 73}
+{"cmd": ["docker", "tag", "sha256:2784311b814c9c1016dc7dcec83ec31e98f8566e02c46ebd3abd328dccde0217", "duckietown/rpi-duckiebot-online:master18"], "msg": "finished command", "pos": 75}
+{"cmd": ["docker", "tag", "sha256:034be85761ff8f455e69e276b8fc1bdb62e670dbaf41ef1c288b1d9984e97393", "duckietown/rpi-duckiebot-loader:master18"], "msg": "running command", "pos": 76}
+{"cmd": ["docker", "tag", "sha256:034be85761ff8f455e69e276b8fc1bdb62e670dbaf41ef1c288b1d9984e97393", "duckietown/rpi-duckiebot-loader:master18"], "msg": "finished command", "pos": 78}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_01_health_stats.yaml", "-p", "DT18_01_health_stats", "up", "-d"], "msg": "running command", "pos": 80}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_01_health_stats.yaml", "-p", "DT18_01_health_stats", "up", "-d"], "msg": "finished command", "pos": 82}
+{"cmd": "docker load --input /var/local/DT18_03_roscore-efaf38bc.tar && rm /var/local/DT18_03_roscore-efaf38bc.tar", "msg": "running command", "pos": 84}
+{"cmd": "docker load --input /var/local/DT18_03_roscore-efaf38bc.tar && rm /var/local/DT18_03_roscore-efaf38bc.tar", "msg": "finished command", "pos": 86}
+{"cmd": ["docker", "tag", "sha256:81d0acfafd45c6647f02ed612d08b8a86d2124b81f6ec8d9458d727d4750fb25", "duckietown/dt-duckiebot-interface:daffy"], "msg": "running command", "pos": 87}
+{"cmd": ["docker", "tag", "sha256:81d0acfafd45c6647f02ed612d08b8a86d2124b81f6ec8d9458d727d4750fb25", "duckietown/dt-duckiebot-interface:daffy"], "msg": "finished command", "pos": 89}
+{"cmd": ["docker", "tag", "sha256:e5e2d03f800d66f9d8a34da7ccd215a96c24887895ee38089f825f1434aafbe6", "duckietown/dt-car-interface:daffy"], "msg": "running command", "pos": 90}
+{"cmd": ["docker", "tag", "sha256:e5e2d03f800d66f9d8a34da7ccd215a96c24887895ee38089f825f1434aafbe6", "duckietown/dt-car-interface:daffy"], "msg": "finished command", "pos": 92}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_03_roscore.yaml", "-p", "DT18_03_roscore", "up", "-d"], "msg": "running command", "pos": 94}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_03_roscore.yaml", "-p", "DT18_03_roscore", "up", "-d"], "msg": "finished command", "pos": 96}
+{"cmd": "docker load --input /var/local/DT18_06_dashboard-72ef4112.tar && rm /var/local/DT18_06_dashboard-72ef4112.tar", "msg": "running command", "pos": 98}
+{"cmd": "docker load --input /var/local/DT18_06_dashboard-72ef4112.tar && rm /var/local/DT18_06_dashboard-72ef4112.tar", "msg": "finished command", "pos": 100}
+{"cmd": ["docker", "tag", "sha256:d49ba895cc69aaa7d9149506ba0361be22e114501f2f783b6e1c27fa4ada17b3", "duckietown/dt-duckiebot-dashboard:daffy"], "msg": "running command", "pos": 101}
+{"cmd": ["docker", "tag", "sha256:d49ba895cc69aaa7d9149506ba0361be22e114501f2f783b6e1c27fa4ada17b3", "duckietown/dt-duckiebot-dashboard:daffy"], "msg": "finished command", "pos": 103}
+{"cmd": ["docker", "tag", "sha256:482d65bc52bf1a3bcbcf6a9ea96ad0fd63c8d72b8a24d335d3d1c8e1c6d4a827", "duckietown/dt-rosbridge-websocket:daffy"], "msg": "running command", "pos": 104}
+{"cmd": ["docker", "tag", "sha256:482d65bc52bf1a3bcbcf6a9ea96ad0fd63c8d72b8a24d335d3d1c8e1c6d4a827", "duckietown/dt-rosbridge-websocket:daffy"], "msg": "finished command", "pos": 106}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_06_dashboard.yaml", "-p", "DT18_06_dashboard", "up", "-d"], "msg": "running command", "pos": 108}
+{"cmd": ["docker-compose", "--file", "/var/local/DT18_06_dashboard.yaml", "-p", "DT18_06_dashboard", "up", "-d"], "msg": "finished command", "pos": 110}
+{"cmd": "docker load --input /var/local/DT18_02_others-3f233b14.tar && rm /var/local/DT18_02_others-3f233b14.tar", "msg": "running command", "pos": 112}
+{"cmd": "docker load --input /var/local/DT18_02_others-3f233b14.tar && rm /var/local/DT18_02_others-3f233b14.tar", "msg": "finished command", "pos": 114}
+{"cmd": ["docker", "tag", "sha256:29cbbdc1158f8ed02dffa272013c8e51f2463299de6140fbef804dad69690ec0", "duckietown/rpi-python-picamera:master18"], "msg": "running command", "pos": 115}
+{"cmd": ["docker", "tag", "sha256:29cbbdc1158f8ed02dffa272013c8e51f2463299de6140fbef804dad69690ec0", "duckietown/rpi-python-picamera:master18"], "msg": "finished command", "pos": 117}
+{"cmd": "docker load --input /var/local/DT18_05_duckiebot_base-446e9c93.tar && rm /var/local/DT18_05_duckiebot_base-446e9c93.tar", "msg": "running command", "pos": 119}
+{"cmd": "docker load --input /var/local/DT18_05_duckiebot_base-446e9c93.tar && rm /var/local/DT18_05_duckiebot_base-446e9c93.tar", "msg": "finished command", "pos": 121}
+{"cmd": ["docker", "tag", "sha256:21109b38a3f01e65190ea6c416c2fa42d232cc8ee66ceb751b27d2a709c4b816", "duckietown/dt-core:daffy"], "msg": "running command", "pos": 122}
+{"cmd": ["docker", "tag", "sha256:21109b38a3f01e65190ea6c416c2fa42d232cc8ee66ceb751b27d2a709c4b816", "duckietown/dt-core:daffy"], "msg": "finished command", "pos": 124}
+{"cmd": "echo \"Intialization COMPLETED\"", "msg": "running command", "pos": 126}
+{"cmd": "echo \"Intialization COMPLETED\"", "msg": "finished command", "pos": 128}

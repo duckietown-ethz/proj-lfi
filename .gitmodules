@@ -1,0 +1,6 @@
+[submodule "infrastructure/core"]
+	path = infrastructure/core
+	url = https://github.com/leopoldsedev/proj-lfi-core.git
+[submodule "infrastructure/duckiebot-interface"]
+	path = infrastructure/duckiebot-interface
+	url = https://github.com/leopoldsedev/proj-lfi-duckiebot-interface.git
