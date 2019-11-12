@@ -1,0 +1,13 @@
+<package>
+  <name>apriltag_pose</name>
+  <version>0.1.0</version>
+  <description>
+  This package implements RH4.
+  </description>
+  <maintainer email="cleopolds@student.ethz.ch">Christian Leopoldseder</maintainer>
+  <license>None</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <run_depend>message_runtime</run_depend>
+</package>

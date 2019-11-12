@@ -1,0 +1,4 @@
+ruamel.yaml==0.15.34
+matplotlib==2.2.4
+reprep
+numpy

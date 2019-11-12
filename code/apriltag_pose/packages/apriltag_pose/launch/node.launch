@@ -1,0 +1,12 @@
+<launch>
+	<group ns="$(arg veh)">
+		<node pkg="apriltag_pose" type="apriltag_pose_node.py" name="apriltag_pose_node" output="screen">
+			<remap from="apriltag_pose_node/apriltag_detections" to="tag_detections"/>
+
+			<!--
+			<param name="braitenberg_mode" type="str" value="brightness_avoid" />
+			<remap from="braitenberg_node/wheels_cmd" to="wheels_driver_node/wheels_cmd"/>
+			-->
+		</node>
+	</group>
+</launch>

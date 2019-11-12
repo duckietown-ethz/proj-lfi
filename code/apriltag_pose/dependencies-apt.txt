@@ -1,0 +1,7 @@
+# LIST YOUR APT PACKAGES HERE
+git
+ros-kinetic-image-transport
+ros-kinetic-image-geometry
+ros-kinetic-image-proc
+libyaml-cpp-dev
+python-sklearn
