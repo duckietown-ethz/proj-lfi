@@ -20,5 +20,6 @@
 
 		<arg name="apriltags" default="true"/>
 		<arg name="/camera/raw/rect" default="true"/>
+		<arg name="fsm" default="false"/>
 	</include>
 </launch>

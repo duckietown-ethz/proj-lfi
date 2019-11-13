@@ -17,6 +17,8 @@ IMG_NAME_DBINT = proj-lfi-duckiebot-interface
 IMAGE_DBINT = $(IMG_NAME_DBINT):$(TAG)
 IMG_NAME_ATPOSE = proj-lfi-apriltag_pose
 IMAGE_ATPOSE = $(IMG_NAME_ATPOSE):$(TAG)
+IMG_NAME_FSM = proj-lfi-fsm
+IMAGE_FSM = $(IMG_NAME_FSM):$(TAG)
 
 ifeq ($(LOCAL),0)
 $(info Building/running on duckiebot)
@@ -36,7 +38,7 @@ RUN_CMD_CORE = docker run -it --rm --privileged --net=host --name $(IMG_NAME_COR
 		--env-file local.env \
 		-e VEHICLE_NAME=$(DB_NAME_LOCAL) \
 		$(IMAGE_CORE) \
-		roslaunch /launchfiles/proj-lfi.launch
+		roslaunch /launchfiles/proj-lfi-duckiebot-interface.launch
 endif
 
 ifeq ($(LOCAL),0)
@@ -63,6 +65,18 @@ RUN_CMD_ATPOSE = docker run -it --rm --privileged --net=host --name $(IMG_NAME_A
 		roslaunch apriltag_pose node.launch veh:=$(DB_NAME_LOCAL)
 endif
 
+ifeq ($(LOCAL),0)
+RUN_CMD_FSM = dts duckiebot demo --demo_name proj-lfi --duckiebot_name $(DB_NAME) --package_name fsm_mod --image $(IMAGE_FSM) --debug
+else
+RUN_CMD_FSM = docker run -it --rm --privileged --net=host --name $(IMG_NAME_FSM) \
+		-v "$(DATA_DIR)":/data \
+		-v "$(LAUNCHFILE_DIR)":/launchfiles \
+		--env-file local.env \
+		-e VEHICLE_NAME=$(DB_NAME_LOCAL) \
+		$(IMAGE_FSM) \
+		roslaunch /launchfiles/proj-lfi-fsm.launch
+endif
+
 .PHONY: core
 core:
 	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t $(IMAGE_CORE) "$(CURDIR)/$@"
@@ -73,6 +87,10 @@ duckiebot-interface:
 
 .PHONY: apriltag_pose
 apriltag_pose:
+	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t proj-lfi-$@:$(TAG) "$(CURDIR)/$@"
+
+.PHONY: fsm
+fsm:
 	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t proj-lfi-$@:$(TAG) "$(CURDIR)/$@"
 
 .PHONY: run_core
@@ -87,9 +105,13 @@ run_dbint:
 run_atpose:
 	$(RUN_CMD_ATPOSE)
 
+.PHONY: run_fsm
+run_fsm:
+	$(RUN_CMD_FSM)
+
 
 .PHONY: all
-all: core duckiebot-interface apriltag_pose
+all: core duckiebot-interface apriltag_pose fsm
 
 #.PHONY: run
 #run:
