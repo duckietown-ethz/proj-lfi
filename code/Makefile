@@ -88,7 +88,7 @@ run_atpose:
 	$(RUN_CMD_ATPOSE)
 
 
-.PHONY: build
+.PHONY: all
 all: core duckiebot-interface apriltag_pose
 
 #.PHONY: run
