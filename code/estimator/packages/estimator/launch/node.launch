@@ -1,0 +1,7 @@
+<launch>
+	<group ns="$(arg veh)">
+		<node pkg="estimator" type="estimator_node.py" name="estimator_node" output="screen">
+			<remap from="estimator_node/linesegments_ground" to="ground_projection/lineseglist_out"/>
+		</node>
+	</group>
+</launch>
