@@ -2,6 +2,11 @@
 	<group ns="$(arg veh)">
 		<node pkg="estimator" type="estimator_node.py" name="estimator_node" output="screen">
 			<remap from="estimator_node/linesegments_ground" to="ground_projection/lineseglist_out"/>
+			<!--
+			<remap from="estimator_node/rectified_image" to="camera_node/image/rect/compressed"/>
+			<remap from="estimator_node/rectified_image" to="anti_instagram_node/corrected_image/compressed"/>
+			-->
+			<remap from="estimator_node/rectified_image" to="camera_node/image/compressed"/>
 		</node>
 	</group>
 </launch>
