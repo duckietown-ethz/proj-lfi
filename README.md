@@ -27,11 +27,11 @@ Individual images can be built with `make [module]`, e.g. `make apriltag_pose`.
 Bagfiles you want to play need to be copied into `code/data/bags`.
 The bagfile that is being played by the modified `camera_node` can be specified during runtime with
 ```
-rosparam set /laptop/camera_node/bag_path [mapfile_name]
+rosparam set /laptop/camera_node/bag_path /data/bags/[mapfile_name]
 ```
 For example
 ```
-rosparam set /laptop/camera_node/bag_path 4-way-straight.bag
+rosparam set /laptop/camera_node/bag_path /data/bags/4-way-straight.bag
 ```
 
 ## Enabling apriltag detection
