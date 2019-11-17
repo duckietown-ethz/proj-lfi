@@ -1,0 +1,5 @@
+verbose: true
+image_size:
+    width: 160
+    height: 120
+top_cutoff_percent: 0
