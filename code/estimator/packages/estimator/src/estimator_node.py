@@ -55,10 +55,17 @@ class EstimatorNode(DTROS):
             [-5.837794811070778e-05, -0.006471722102967347, 1.0]
         ])
 
+
+        self.last_stamp = None
+
+        self.last_descriptors = None
+        self.last_keypoints = None
+
         self.last_avg_angle = None
-        self.cumulative_angle = 0.0
         self.last_avg_position = None
-        self.cumulative_position = np.matrix([0.0, 0.0]).T
+
+        self.cumulative_angle = None
+        self.cumulative_position = None
 
         self.log("Initialized")
 
@@ -68,6 +75,17 @@ class EstimatorNode(DTROS):
                 #point = point[0]
                 #p = (corner[1], corner[0])
                 self.draw_segment(image, p, p, 5, 0.1)
+
+    def draw_ref_point(self, image, position, angle, length):
+        # position in [px]
+        # angle in [deg]
+
+        angle_rad = np.deg2rad(angle)
+        pt1 = (int(position[1]), int(position[0]))
+        pt2 = (int(pt1[0] + length * np.sin(angle_rad)), int(pt1[1] + length * np.cos(angle_rad)))
+
+        return cv2.arrowedLine(image, pt1, pt2, (0, 0, 255), 1)
+
 
     def draw_segment(self, image, pt1, pt2, color, thickness):
         defined_colors = {
@@ -173,21 +191,24 @@ class EstimatorNode(DTROS):
 
     def cbImage(self, msg):
             self.log("Got image!")
+            if self.last_stamp == None:
+                self.last_stamp = msg.header.stamp
 
             try:
                 original = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding = "bgr8")
             except CvBridgeError as e:
                 rospy.logerr(e)
 
-            upscaled = cv2.resize(original, (640, 480), None, 0, 0, cv2.INTER_LINEAR)
-            # TODO Make camera_img_to_birdseye work with images of any size
-            warped = self.camera_img_to_birdseye(upscaled, self.homography, 500.0)
+            warped = self.camera_img_to_birdseye(original, self.homography)
 
-            img = warped
+            h, w, _ = warped.shape
+            img = warped[h/4.0:,:]
+            h, w, _ = img.shape
 
             # TODO Play around with these parameters
             blurred = cv2.GaussianBlur(img, (0,0), 3)
             img = cv2.addWeighted(img, 1.5, blurred, -0.5, 0)
+            img3 = img.copy()
 
 
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -198,7 +219,7 @@ class EstimatorNode(DTROS):
 
             # Convert to nx2-array of pixel coordinates (x,y)
             points_goodFeaturesToTrack = []
-            if len(corners) > 0:
+            if corners != None and len(corners) > 0:
                 try:
                     points = corners.squeeze()
                     points[:, 0], points[:, 1] = points[:, 1], points[:, 0].copy()
@@ -210,33 +231,102 @@ class EstimatorNode(DTROS):
             orb = cv2.ORB_create(400)
             kp, des = orb.detectAndCompute(img, None)
 
+            if self.cumulative_position == None or self.last_stamp > msg.header.stamp:
+                self.cumulative_position = np.matrix([w/2.0, h/4.0]).T
+
+            if self.cumulative_angle == None or self.last_stamp > msg.header.stamp:
+                self.cumulative_angle = 180.0
+
+            if self.last_descriptors != None:
+                # TODO Try out different matchers
+                # TODO Try out matching based on predicted positions (based on motor commands) instead of descriptors, or a combination of position- and descriptor-based matching.
+                # TODO Try out combining the off-the-shelf feature-detectors with custom ones (maybe separate between position and orientation feature detectors).
+                # TODO Calculate MSE of matches (based on position or descriptors)
+                matcher = cv2.BFMatcher_create(cv2.NORM_HAMMING, crossCheck=True)
+
+                matches = matcher.match(des, self.last_descriptors)
+                matches = sorted(matches, key = lambda x:x.distance)
+
+                matches_to_consider = matches[:50]
 
 
-            angles = []
-            positions = []
-            for keypoint in kp:
-                angles.append(keypoint.angle)
-                positions.append([keypoint.pt[0], keypoint.pt[1]])
+                idx = [m.queryIdx for m in matches_to_consider]
+                last_idx = [m.trainIdx for m in matches_to_consider]
 
-            angles = np.array(angles)
-            positions = np.matrix(positions).T
+                positions = np.array([[k.pt[0], k.pt[1]] for k in kp])[np.array(idx)]
+                positions_last = np.array([[k.pt[0], k.pt[1]] for k in self.last_keypoints])[np.array(last_idx)]
 
-            avg_angle = np.mean(angles)
-            if self.last_avg_angle != None:
-                avg_angle_diff = avg_angle - self.last_avg_angle
-                self.cumulative_angle += avg_angle_diff
-                #self.log(self.cumulative_angle)
+                position_diff = positions - positions_last
+                diff_lengths = np.linalg.norm(position_diff, axis=1)
 
-            self.last_avg_angle = avg_angle
+                # Filter impossible values, i.e. zero difference, since that would mean we didn't move at all
+                position_diff = position_diff[diff_lengths > 0.001]
+                if position_diff.shape[0] > 0:
+                    #self.log("####################")
+                    #self.log(diff_lengths)
+
+                    avg_position_diff = np.mean(position_diff, 0)
+                    self.cumulative_position += np.matrix(avg_position_diff).T
 
 
-            avg_position = np.mean(positions, axis=1)
-            if self.last_avg_position != None:
-                avg_position_diff = avg_position - self.last_avg_position
-                self.cumulative_position += avg_position_diff
-                self.log(self.cumulative_position)
+                angles = np.array([k.angle for k in kp])[np.array(idx)]
+                angles_last = np.array([k.angle for k in self.last_keypoints])[np.array(last_idx)]
 
-            self.last_avg_position = avg_position
+                angle_diff = angles - angles_last
+                diff_abs = np.abs(angle_diff)
+                # Filter impossible values, i.e.:
+                # -> zero difference, since that would mean we didn't move at all
+                # -> angle larger than 45 degree
+                angle_diff = angle_diff[np.logical_and(diff_abs > 0.001, diff_abs < 45.0)]
+                if angle_diff.shape[0] > 0:
+                    avg_angle_diff = np.mean(angle_diff, 0)
+                    self.cumulative_angle += avg_angle_diff
+
+
+
+                p = [np.asscalar(self.cumulative_position[1]), np.asscalar(self.cumulative_position[0])]
+                #self.log(p)
+
+                img3 = self.draw_ref_point(img3, p, -self.cumulative_angle, 30)
+                #self.draw_segment(img3, p, p, 4, 0.1)
+                img3 = cv2.drawKeypoints(img3, np.array(kp)[np.array(idx)], None, (255,255,255), 4)
+
+
+
+                # Draw first 10 matches.
+                #img3 = cv2.drawMatches(img, kp, img, self.last_keypoints, matches_to_consider, None, flags=2)
+
+
+            self.last_keypoints = kp
+            self.last_descriptors = des
+            self.last_stamp = msg.header.stamp
+
+
+#             angles = []
+#             positions = []
+#             for keypoint in kp:
+#                 angles.append(keypoint.angle)
+#                 positions.append([keypoint.pt[0], keypoint.pt[1]])
+# 
+#             angles = np.array(angles)
+#             positions = np.matrix(positions).T
+# 
+#             avg_angle = np.mean(angles)
+#             if self.last_avg_angle != None:
+#                 avg_angle_diff = avg_angle - self.last_avg_angle
+#                 self.cumulative_angle += avg_angle_diff
+#                 #self.log(self.cumulative_angle)
+# 
+#             self.last_avg_angle = avg_angle
+# 
+# 
+#             avg_position = np.mean(positions, axis=1)
+#             if self.last_avg_position != None:
+#                 avg_position_diff = avg_position - self.last_avg_position
+#                 self.cumulative_position += avg_position_diff
+#                 #self.log(self.cumulative_position)
+# 
+#             self.last_avg_position = avg_position
 
 
 
@@ -253,10 +343,10 @@ class EstimatorNode(DTROS):
             transMat = np.hstack([np.zeros((2,2)), self.cumulative_position])
             #transMat = np.hstack([np.zeros((2,2)), np.ones((2,1))])
             M = rotMat + transMat
-            output = cv2.warpAffine(output, M, (w, h))
+            #output = cv2.warpAffine(output, M, (w, h))
 
             try:
-                image_msg = self.bridge.cv2_to_compressed_imgmsg(output, dst_format = "jpg")
+                image_msg = self.bridge.cv2_to_compressed_imgmsg(img3, dst_format = "jpg")
             except CvBridgeError as e:
                 rospy.logerr(e)
 
@@ -286,13 +376,21 @@ class EstimatorNode(DTROS):
         height, width, _ = image.shape
         return 0 <= x and x < height and 0 <= y and y < width
 
-    def camera_img_to_birdseye(self, cam_img, homography, px_per_m=500.0):
+    def camera_img_to_birdseye(self, cam_img, homography):
         height, width, _ = cam_img.shape
+        px_per_m_original = 500.0
 
         H = homography
 
+        # Scale homography to the size of the camera image, as it assumes a size of (480,640)
+        scale_x = 480.0 / height
+        scale_y = 640.0 / width
+        px_per_m = px_per_m_original / scale_x
+        scaler_mat = np.hstack([np.ones((3,1))*scale_x, np.ones((3,1))*scale_y, np.ones((3,1))])
+        H = np.multiply(scaler_mat, H)
+
         # Scale axle coordinates to pixels
-        offset = np.matrix([0.0,0.0]).T
+        # TODO This currently assumes that the image has been evenly scaled along both axes. There should actually be separate px_per_m for x and y.
         scaler_mat = np.vstack([np.ones((2,3))*px_per_m, np.ones((1,3))])
         H = np.multiply(scaler_mat, H)
 

@@ -1,12 +1,26 @@
 <launch>
+	<arg name="param_file_name" default="default" doc="Specify a param file." />
+
 	<group ns="$(arg veh)">
+		<node pkg="estimator" type="preprocessor_node.py" name="preprocessor_node" output="screen">
+			<rosparam command="load" file="$(find estimator)/config/preprocessor_node/$(arg param_file_name).yaml"/>
+
+			<remap from="preprocessor_node/image_in/compressed" to="camera_node/image/compressed"/>
+		</node>
+
+		<node pkg="estimator" type="birdseye_node.py" name="birdseye_node" output="screen">
+			<rosparam command="load" file="$(find estimator)/config/birdseye_node/$(arg param_file_name).yaml"/>
+
+			<remap from="birdseye_node/image_in/compressed" to="preprocessor_node/image_out/compressed"/>
+		</node>
+
 		<node pkg="estimator" type="estimator_node.py" name="estimator_node" output="screen">
 			<remap from="estimator_node/linesegments_ground" to="ground_projection/lineseglist_out"/>
 			<!--
 			<remap from="estimator_node/rectified_image" to="camera_node/image/rect/compressed"/>
-			<remap from="estimator_node/rectified_image" to="anti_instagram_node/corrected_image/compressed"/>
-			-->
 			<remap from="estimator_node/rectified_image" to="camera_node/image/compressed"/>
+			-->
+			<remap from="estimator_node/rectified_image" to="anti_instagram_node/corrected_image/compressed"/>
 		</node>
 	</group>
 </launch>
