@@ -8,6 +8,7 @@ import rospkg
 import yaml
 import math
 import tf
+import cv2
 
 from duckietown import DTROS
 from sensor_msgs.msg import CompressedImage
@@ -94,10 +95,26 @@ class AprilTagPoseNode(DTROS):
                 # pixel scaling
                 px = int((I_x / height_m) * height)
                 py = int((I_y / width_m) * width)
+                pt1 = (px, py)
                 self.log('pixel: ({}, {}'.format(px, py))
 
+                # second point for arrow
+                rotx = np.array([[1, 0, 0], [0, np.cos(pose_botFrame_quat[0]), -np.sin(pose_botFrame_quat[0])], [0, np.sin(pose_botFrame_quat[0]), np.cos(pose_botFrame_quat[0])]])
+                roty = np.array([[np.cos(pose_botFrame_quat[1]), 0, np.sin(pose_botFrame_quat[1])], [0, 1, 0], [-np.sin(pose_botFrame_quat[1]), 0, np.cos(pose_botFrame_quat[1])]])
+                rotz = np.array([[np.cos(pose_botFrame_quat[2]), -np.sin(pose_botFrame_quat[2]), 0], [np.sin(pose_botFrame_quat[2]), np.cos(pose_botFrame_quat[2]), 0] ,[0, 0, 1]])
+                rot = np.matmul(rotx, roty)
+                rot = np.matmul(rot, rotz)
+                pt2 = np.matmul(rot, [[80], [0], [0]])
+                pt2 = (int(-pt2[0]), -int(pt2[1]))
+                pt2 = tuple(map(sum,zip(pt1,pt2)))
+
+                self.log(pt1)
+                self.log(pt2)
+
                 if self.in_img(px, py, output):
-                    output[px-5:px+5, py-5:py+5] = [255, 255, 255]
+                    #output[px-5:px+5, py-5:py+5] = [255, 255, 255]
+                    #output[pt2[0] - 5:pt2[0] + 5, pt2[1] - 5:pt2[1] + 5] = [255, 255, 255]
+                    output = cv2.arrowedLine(output, (pt1[1], pt1[0]), (pt2[1], pt2[0]), (255, 255, 255), 10)
 
             try:
                 image_msg = self.bridge.cv2_to_compressed_imgmsg(output, dst_format = "png")
