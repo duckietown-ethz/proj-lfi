@@ -32,7 +32,7 @@ ARCH = amd64
 endif
 
 ifeq ($(LOCAL),0)
-RUN_CMD_CORE = dts duckiebot demo --demo_name proj-lfi --duckiebot_name $(DB_NAME) --package_name duckietown_demos --image $(IMAGE_CORE) --debug
+RUN_CMD_CORE = dts duckiebot demo --demo_name proj-lfi-core --duckiebot_name $(DB_NAME) --package_name duckietown_demos --image $(IMAGE_CORE) --debug
 else
 RUN_CMD_CORE = docker run -it --rm --privileged --net=host --name $(IMG_NAME_CORE) \
 		-v "$(DATA_DIR)":/data \
@@ -40,11 +40,11 @@ RUN_CMD_CORE = docker run -it --rm --privileged --net=host --name $(IMG_NAME_COR
 		--env-file local.env \
 		-e VEHICLE_NAME=$(DB_NAME_LOCAL) \
 		$(IMAGE_CORE) \
-		roslaunch /launchfiles/proj-lfi-duckiebot-interface.launch
+		roslaunch /launchfiles/proj-lfi-core.launch
 endif
 
 ifeq ($(LOCAL),0)
-RUN_CMD_DBINT = dts duckiebot demo --demo_name proj-lfi --duckiebot_name $(DB_NAME) --package_name duckietown_demos --image $(IMAGE_DBINT) --debug
+RUN_CMD_DBINT = dts duckiebot demo --demo_name all_drivers --duckiebot_name $(DB_NAME) --package_name duckiebot_interface --image $(IMAGE_DBINT) --debug
 else
 RUN_CMD_DBINT = docker run -it --rm --privileged --net=host --name $(IMG_NAME_DBINT) \
 		-v "$(DATA_DIR)":/data \
