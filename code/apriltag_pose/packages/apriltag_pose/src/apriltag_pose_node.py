@@ -7,11 +7,13 @@ import rospy
 import rospkg
 import yaml
 import math
+import tf
 
 from duckietown import DTROS
 from sensor_msgs.msg import CompressedImage
 from apriltags2_ros.msg import AprilTagDetectionArray
 from cv_bridge import CvBridge, CvBridgeError
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 
 class AprilTagPoseNode(DTROS):
@@ -66,6 +68,14 @@ class AprilTagPoseNode(DTROS):
                 position = pose.position
                 orientation = pose.orientation
 
+                # Transformation from camera coordinate system to root coordinate systems ------------------------------
+                (pose_botFrame_pos, pose_botFrame_quat) = self.cam2bot_transform(position, orientation)
+                self.log("Duckiebot position in bot frame: ")
+                self.log(pose_botFrame_pos)
+                self.log("Duckiebot orientation in bot frame: ")
+                self.log(pose_botFrame_quat)
+                # ------------------------------------------------------------------------------------------------------
+
                 # TODO The april tag pose is in the camera frame and actually needs to be transformed into the axle coordinate frame
                 # axle frame
                 D_y = -position.x
@@ -92,6 +102,49 @@ class AprilTagPoseNode(DTROS):
 
             image_msg.header.stamp = rospy.Time.now()
             self.pub_image.publish(image_msg)
+
+
+    def cam2bot_transform(self, position, orientation):
+        '''
+        transforms the position (x,y,z) and orientation (qx,qy,qz,qw) of the april tag (t) in the camera frame (c_) to
+        the position and orientation of the april tag in the duckiebot frame
+
+        :param position: (x,y,z) position coordinates of the april tag in the camera frame
+        :param orientation: (qx,qy,qz,qw) quaternion orientation coordinates of the april tag in the camera frame
+        :return:
+        '''
+        c_x_ct = position.x
+        c_y_ct = position.y
+        c_z_ct = position.z
+        c_ox_ct = orientation.x
+        c_oy_ct = orientation.y
+        c_oz_ct = orientation.z
+        c_ow_ct = orientation.w
+        dist = np.linalg.norm([c_x_ct, c_y_ct, c_z_ct])
+        if dist > 0.95:
+            rospy.logwarn("Tag out of range (dist=%f)" % dist)
+
+        orient_camInbot = [-0.5495232, 0.5495232, -0.4449991, 0.4449991]
+        rotMat_camInbot = tf.transformations.quaternion_matrix(orient_camInbot)[0:3, 0:3]
+        pos_camInbot = np.array([[0.0382047], [0.0], [0.08479]])
+
+        abc = np.hstack((rotMat_camInbot, pos_camInbot))
+        transformation = np.vstack((abc, [0, 0, 0, 1]))
+        botframe_pos = np.matmul(transformation, np.vstack(([position.x], [position.y], [position.z], 1)))
+        '''
+        self.log("shape of transformation matrix")
+        self.log(transformation.shape)
+        self.log("shape of position vector")
+        self.log(np.vstack(([position.x], [position.y], [position.z], 1)).shape)
+        self.log("shape of new position vector")
+        self.log(botframe_pos.shape)
+        '''
+        
+
+        return botframe_pos[0:2], orientation
+
+
+
 
     def in_img(self, x, y, image):
         height, width, _ = image.shape
