@@ -1,11 +1,12 @@
 import rospy
+from duckietown_utils.jpg import bgr_from_jpg
 from cv_bridge import CvBridge, CvBridgeError
 
-def read_image(bridge, image_msg):
+def read_image(image_msg):
     try:
-        image = bridge.compressed_imgmsg_to_cv2(image_msg, desired_encoding = "bgr8")
+        image = bgr_from_jpg(image_msg.data)
         return image
-    except CvBridgeError as e:
+    except ValueError as e:
         rospy.logerr(e)
         return None
 

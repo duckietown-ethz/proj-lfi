@@ -6,6 +6,7 @@
 			<rosparam command="load" file="$(find estimator)/config/preprocessor_node/$(arg param_file_name).yaml"/>
 
 			<remap from="preprocessor_node/image_in/compressed" to="camera_node/image/compressed"/>
+			<remap from="preprocessor_node/camera_info" to="camera_node/camera_info"/>
 		</node>
 
 		<node pkg="estimator" type="birdseye_node.py" name="birdseye_node" output="screen">
@@ -14,13 +15,15 @@
 			<remap from="birdseye_node/image_in/compressed" to="preprocessor_node/image_out/compressed"/>
 		</node>
 
+		<!--
 		<node pkg="estimator" type="estimator_node.py" name="estimator_node" output="screen">
 			<remap from="estimator_node/linesegments_ground" to="ground_projection/lineseglist_out"/>
-			<!--
 			<remap from="estimator_node/rectified_image" to="camera_node/image/rect/compressed"/>
 			<remap from="estimator_node/rectified_image" to="camera_node/image/compressed"/>
-			-->
 			<remap from="estimator_node/rectified_image" to="anti_instagram_node/corrected_image/compressed"/>
+
+			<remap from="estimator_node/rectified_image" to="preprocessor_node/image_out/compressed"/>
 		</node>
+		-->
 	</group>
 </launch>

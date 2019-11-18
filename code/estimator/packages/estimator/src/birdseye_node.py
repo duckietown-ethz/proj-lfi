@@ -9,6 +9,7 @@ from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
 
 import utils
+from config_loader import get_camera_info_for_robot, get_homography_for_robot
 
 
 class BirdseyeNode(DTROS):
@@ -22,6 +23,10 @@ class BirdseyeNode(DTROS):
         self.updateParameters()
         self.refresh_parameters()
 
+        # Load camera calibration
+        self.camera_info = get_camera_info_for_robot(self.veh_name)
+        self.homography = get_homography_for_robot(self.veh_name)
+
         # Subscribers
         self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1)
 
@@ -30,20 +35,6 @@ class BirdseyeNode(DTROS):
         self.pub_image_out = self.publisher('~image_out/compressed', CompressedImage, queue_size=1)
 
         self.bridge = CvBridge()
-
-        # duckymcduckface
-        self.homography = np.matrix([
-            [1.8886299808681545e-05, -0.0002247954313914998, -0.1783985372127643],
-            [0.0008637636479351076, 1.107464752716367e-06, -0.26938728058395345],
-            [5.021859748339636e-05,-0.006789974261768175, 1.0]
-        ])
-        #wlan
-        self.homography = np.matrix([
-            [-1.1907434447195475e-05, -0.00016985225547642657, -0.18018639992319468],
-            [0.0008110438997760144, 2.9640247271729815e-07, -0.2609339693203626],
-            [-5.837794811070778e-05, -0.006471722102967347, 1.0]
-        ])
-
 
         self.log("Initialized")
 
@@ -58,7 +49,7 @@ class BirdseyeNode(DTROS):
                 self.refresh_parameters()
                 self.parametersChanged = False
 
-            img_original = utils.read_image(self.bridge, msg)
+            img_original = utils.read_image(msg)
             if img_original == None:
                 return
 
@@ -75,6 +66,7 @@ class BirdseyeNode(DTROS):
 
 
     # TODO Make this function work if the horizon has been cut off.
+    # TODO Compute transformations only once
     def camera_img_to_birdseye(self, cam_img, homography):
         height, width, _ = cam_img.shape
         px_per_m_original = 500.0
@@ -109,6 +101,7 @@ class BirdseyeNode(DTROS):
         # Rotate and transpose for correct orientation after transformation
         (h, w) = birdseye_img.shape[:2]
         center = (w / 2, h / 2)
+        # TODO Convert this into a 3x3 matrix and combine with H
         rotMat = cv2.getRotationMatrix2D(center, 180, 1.0)
         birdseye_img = cv2.warpAffine(birdseye_img, rotMat, (w, h))
         birdseye_img = cv2.transpose(birdseye_img)
