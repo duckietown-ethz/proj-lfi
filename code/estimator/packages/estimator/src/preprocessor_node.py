@@ -17,10 +17,10 @@ from config_loader import get_camera_info_for_robot, get_homography_for_robot
 class PreprocessorNode(DTROS):
     """
     Tasks of this node:
-    - (TODO) Set parameters of camera_node (resolution)
+    - (done) Set parameters of camera_node (resolution)
     - (done) Cutting off horizon
     - (TODO) Improve image contrast
-    - (TODO) Image rectification
+    - (done) Image rectification
     """
 
     def __init__(self, node_name):
@@ -54,7 +54,6 @@ class PreprocessorNode(DTROS):
         self.camera_width = int(640/2.5)
         self.camera_height = int(480/2.5)
 
-        #rospy.sleep(2.0)
         rospy.set_param('/{}/camera_node/exposure_mode'.format(self.veh_name), 'off')
         rospy.set_param('/{}/camera_node/res_w'.format(self.veh_name), self.camera_width)
         rospy.set_param('/{}/camera_node/res_h'.format(self.veh_name), self.camera_height)
@@ -106,7 +105,6 @@ class PreprocessorNode(DTROS):
             if self.verbose:
                 utils.publish_image(self.bridge, self.pub_cutoff, img_cutoff)
 
-            # TODO Rectify image using camera info
             # TODO Improve image contrast
 
             img_out = img_cutoff
@@ -125,7 +123,6 @@ class PreprocessorNode(DTROS):
         self.log("Stopping preprocessor_node.")
 
         super(PreprocessorNode, self).onShutdown()
-
 
 
 if __name__ == '__main__':

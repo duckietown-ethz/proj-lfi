@@ -15,6 +15,12 @@
 			<remap from="birdseye_node/image_in/compressed" to="preprocessor_node/image_out/compressed"/>
 		</node>
 
+		<node pkg="estimator" type="localization_node.py" name="localization_node" output="screen">
+			<rosparam command="load" file="$(find estimator)/config/localization_node/$(arg param_file_name).yaml"/>
+
+			<remap from="localization_node/image_in/compressed" to="birdseye_node/image_out/compressed"/>
+		</node>
+
 		<!--
 		<node pkg="estimator" type="estimator_node.py" name="estimator_node" output="screen">
 			<remap from="estimator_node/linesegments_ground" to="ground_projection/lineseglist_out"/>

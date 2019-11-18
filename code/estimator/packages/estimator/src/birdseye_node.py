@@ -24,11 +24,11 @@ class BirdseyeNode(DTROS):
         self.refresh_parameters()
 
         # Load camera calibration
-        self.camera_info = get_camera_info_for_robot(self.veh_name)
         self.homography = get_homography_for_robot(self.veh_name)
 
         # Subscribers
-        self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1)
+        buffer_size = 294912 # TODO Set this dynamically based on the image size.
+        self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
 
         # Publishers
         self.pub_warped = self.publisher('~warped/compressed', CompressedImage, queue_size=1)
@@ -58,6 +58,7 @@ class BirdseyeNode(DTROS):
             if self.verbose:
                 utils.publish_image(self.bridge, self.pub_warped, img_warped)
 
+            # TODO Make these values parameters
             img_blurred = cv2.GaussianBlur(img_warped, (0,0), 3)
             img_sharpened = cv2.addWeighted(img_warped, 1.5, img_blurred, -0.5, 0)
 
@@ -116,8 +117,7 @@ class BirdseyeNode(DTROS):
     def onShutdown(self):
         self.log("Stopping birdseye_node.")
 
-        super(PreprocessorNode, self).onShutdown()
-
+        super(BirdseyeNode, self).onShutdown()
 
 
 if __name__ == '__main__':

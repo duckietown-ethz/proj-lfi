@@ -2,6 +2,7 @@ import rospy
 from duckietown_utils.jpg import bgr_from_jpg
 from cv_bridge import CvBridge, CvBridgeError
 
+
 def read_image(image_msg):
     try:
         image = bgr_from_jpg(image_msg.data)
