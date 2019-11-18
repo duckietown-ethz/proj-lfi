@@ -74,18 +74,22 @@ class AprilTagPoseNode(DTROS):
                 self.log(pose_botFrame_pos)
                 self.log("Duckiebot orientation in bot frame: ")
                 self.log(tf.transformations.euler_from_quaternion(pose_botFrame_quat))
+
+                D_x = pose_botFrame_pos[0]
+                D_y = pose_botFrame_pos[1]
                 # ------------------------------------------------------------------------------------------------------
 
                 # TODO The april tag pose is in the camera frame and actually needs to be transformed into the axle coordinate frame
-                # axle frame
+                '''# axle frame
                 D_y = -position.x
                 D_x = position.z
                 self.log('axle: ({}, {}'.format(D_x, D_y))
+                '''
 
                 # image frame
                 I_x = D_x
                 I_y = width_m + D_y
-                self.log('image: ({}, {}'.format(I_x, I_y))
+                #self.log('image: ({}, {}'.format(I_x, I_y))
 
                 # pixel scaling
                 px = int((I_x / height_m) * height)
@@ -93,7 +97,7 @@ class AprilTagPoseNode(DTROS):
                 self.log('pixel: ({}, {}'.format(px, py))
 
                 if self.in_img(px, py, output):
-                    output[px, py] = [255, 255, 255]
+                    output[px-5:px+5, py-5:py+5] = [255, 255, 255]
 
             try:
                 image_msg = self.bridge.cv2_to_compressed_imgmsg(output, dst_format = "png")
