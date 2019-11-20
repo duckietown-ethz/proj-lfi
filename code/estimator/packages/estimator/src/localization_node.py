@@ -8,6 +8,7 @@ import rospkg
 from duckietown import DTROS
 from sensor_msgs.msg import CompressedImage
 from geometry_msgs.msg import Point, Quaternion, Pose
+from std_msgs.msg import Bool
 from cv_bridge import CvBridge, CvBridgeError
 
 import utils
@@ -33,6 +34,7 @@ class LocalizationNode(DTROS):
         # Subscribers
         buffer_size = 294912 # TODO Set this dynamically based on the image size.
         self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
+        self.sub_reset = self.subscriber('~reset', Bool, self.cb_reset, queue_size=1)
 
         # Publishers
         self.pub_keypoints = self.publisher('~verbose/keypoints/compressed', CompressedImage, queue_size=1)
@@ -44,10 +46,12 @@ class LocalizationNode(DTROS):
         self.start_position = np.matrix([640/2.0, 480/4.0]).T
         self.start_angle = 180.0
 
-        self.last_stamp = None
-
         self.log("Initialized")
 
+    def cb_reset(self, msg):
+        do_reset = msg.data
+        if do_reset:
+            self.feature_tracker.reset()
 
     def draw_ref_point(self, image, position, angle, length):
         # position in [px]
@@ -73,15 +77,6 @@ class LocalizationNode(DTROS):
             img_original = utils.read_image(msg)
             if img_original == None:
                 return
-
-            if self.last_stamp == None:
-                self.last_stamp = msg.header.stamp
-
-            # Reset feature tracker if the image feed loops
-            if self.last_stamp > msg.header.stamp:
-                self.feature_tracker.reset()
-
-            self.last_stamp = msg.header.stamp
 
             img_keypoints = img_original.copy()
             position, angle = self.feature_tracker.process_image(img_original, image_out_keypoints=img_keypoints)

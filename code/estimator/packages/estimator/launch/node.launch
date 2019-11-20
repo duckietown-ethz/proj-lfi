@@ -19,6 +19,8 @@
 			<rosparam command="load" file="$(find estimator)/config/localization_node/$(arg param_file_name).yaml"/>
 
 			<remap from="localization_node/image_in/compressed" to="birdseye_node/image_out/compressed"/>
+			<!-- Reset state if the image stream loops -->
+			<remap from="localization_node/reset" to="camera_node/loop"/>
 		</node>
 
 		<!--

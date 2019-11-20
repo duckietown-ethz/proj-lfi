@@ -13,6 +13,9 @@
 			0.54952518 -0.54952518 0.44499672 -0.44499672
             axle camera 100" />
 
+		<!--
+		For some reason people don't follow the specs for traffic signs and the signs are more like 7 cm above ground as opposed to 13 cm.
+		-->
 		<node pkg="tf" type="static_transform_publisher" name="tf_apriltag_intersection"
         args="-0.61 -0.13 0.0
         	0.5 0.5 0.5 -0.5
