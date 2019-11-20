@@ -19,7 +19,7 @@ class FeatureTracker():
         self.last_descriptors = None
         self.last_keypoints = None
 
-        self.cumulative_position = 0.0
+        self.cumulative_position = np.matrix([0.0, 0.0]).T
         self.cumulative_angle = 0.0
 
     def draw_match_lines(self, image, matches):
