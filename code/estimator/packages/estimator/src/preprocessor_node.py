@@ -20,7 +20,7 @@ class PreprocessorNode(DTROS):
     Tasks of this node:
     - (done) Set parameters of camera_node (resolution)
     - (done) Cutting off horizon
-    - (TODO) Improve image contrast
+    - (done) Improve image contrast
     - (done) Image rectification
     """
 

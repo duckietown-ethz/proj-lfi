@@ -87,7 +87,7 @@ class BirdseyeNode(DTROS):
         H = np.multiply(scaler_mat, H)
 
         # Size (in pixels) of the resulting transformed image
-        size = (height, width)
+        size = (height/2, width/2)
 
         # Center the axle x-axis in the image
         translation = np.eye(3, 3)

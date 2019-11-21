@@ -41,7 +41,7 @@ class LocalizationNode(DTROS):
         self.pub_intersection = self.publisher('~verbose/intersection/compressed', CompressedImage, queue_size=1)
 
         self.bridge = CvBridge()
-        self.feature_tracker = FeatureTracker(400, self.log)
+        self.feature_tracker = FeatureTracker(400, 50, self.log)
 
         self.start_position = np.matrix([640/2.0, 480/4.0]).T
         self.start_angle = 180.0
@@ -85,8 +85,8 @@ class LocalizationNode(DTROS):
             img_position = self.draw_ref_point(img_position, position, angle, 10)
 
             px_per_m_original = 500.0
-            scale_x = 480.0 / 240.0
-            scale_y = 640.0 / 320.0
+            scale_x = 480.0 / 192
+            scale_y = 640.0 / 256
             px_per_m_x = px_per_m_original / scale_x
             px_per_m_y = px_per_m_original / scale_y
 
@@ -110,16 +110,16 @@ class LocalizationNode(DTROS):
         height_m = 0.61
         width_m = 0.61
 
-        offset = np.array([height/2, width/2])
-        position_intersection = position_meter * np.array([height / height_m, width / width_m])
+        offset = np.array([height/2 + height, width/2 + (width*3)/4])
+        position_intersection = - position_meter * np.array([height / height_m, width / width_m])
         position_image = offset + position_intersection.astype(int)
 
         length = 100
-        angle_rad = np.deg2rad(angle)
+        angle_rad = np.deg2rad(180.0 - angle)
         pt1 = (position_image[1], position_image[0])
         pt2 = (int(pt1[0] + length * np.sin(angle_rad)), int(pt1[1] + length * np.cos(angle_rad)))
 
-        image = cv2.arrowedLine(image, pt1, pt2, (255,0,255), 5)
+        image = cv2.arrowedLine(image, pt1, pt2, (0,255,0), 5)
 
         return image
 

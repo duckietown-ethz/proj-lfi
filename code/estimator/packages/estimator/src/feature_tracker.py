@@ -6,10 +6,11 @@ class FeatureTracker():
     # TODO Try out matching based on predicted positions (based on motor commands) instead of descriptors, or a combination of position- and descriptor-based matching.
     # TODO Try out combining the off-the-shelf feature-detectors with custom ones (maybe separate between position and orientation feature detectors).
 
-    def __init__(self, keypoint_count, log):
+    def __init__(self, keypoint_count, matches_to_consider, log):
         self.detector = cv2.ORB_create(keypoint_count)
         self.matcher = cv2.BFMatcher_create(cv2.NORM_HAMMING, crossCheck=True)
 
+        self.matches_to_consider = matches_to_consider
         self.log = log
 
         self.reset()
@@ -39,7 +40,7 @@ class FeatureTracker():
             matches = self.matcher.match(descriptors, self.last_descriptors)
             matches = sorted(matches, key = lambda x:x.distance)
 
-            matches_to_consider = matches[:50]
+            matches_to_consider = matches[:self.matches_to_consider]
 
             idx = [m.queryIdx for m in matches_to_consider]
             last_idx = [m.trainIdx for m in matches_to_consider]
