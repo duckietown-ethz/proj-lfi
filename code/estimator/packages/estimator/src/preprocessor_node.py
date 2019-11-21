@@ -38,7 +38,7 @@ class PreprocessorNode(DTROS):
 
         # Load camera calibration
         self.camera_info = get_camera_info_for_robot(self.veh_name)
-	self.pcm = None
+        self.pcm = None
 
         # Subscribers
         self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.cb_camera_info, queue_size=1)
@@ -71,7 +71,7 @@ class PreprocessorNode(DTROS):
     def cb_camera_info(self, msg):
         if self.image_size_width == msg.width and self.image_size_height == msg.height:
             self.log('Received camera info.', 'info')
-	    self.pcm = PinholeCameraModel()
+            self.pcm = PinholeCameraModel()
             self.pcm.fromCameraInfo(msg)
 
             # This topic subscription is only needed initially, so it can be unregistered.
