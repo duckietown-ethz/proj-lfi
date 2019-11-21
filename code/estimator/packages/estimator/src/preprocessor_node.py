@@ -12,6 +12,7 @@ from image_geometry import PinholeCameraModel
 
 import utils
 from config_loader import get_camera_info_for_robot, get_homography_for_robot
+from anti_instagram import AntiInstagram
 
 
 class PreprocessorNode(DTROS):
@@ -49,20 +50,26 @@ class PreprocessorNode(DTROS):
 
         # Initialize rest of the node
         self.bridge = CvBridge()
+        self.ai = AntiInstagram()
+
+        self.ai_calulation_interval = 10
+        self.ai_color_balance_percentage = 0.8
+        self.ai_output_scale = 1.0
+        self.ai_calculation_scale = 0.5
+        self.latest_image = None
+
+        rospy.Timer(rospy.Duration(self.ai_calulation_interval), self.calculate_new_parameters)
 
         # Configure camera
-        self.camera_width = int(640/2.5)
-        self.camera_height = int(480/2.5)
-
         rospy.set_param('/{}/camera_node/exposure_mode'.format(self.veh_name), 'off')
-        rospy.set_param('/{}/camera_node/res_w'.format(self.veh_name), self.camera_width)
-        rospy.set_param('/{}/camera_node/res_h'.format(self.veh_name), self.camera_height)
+        rospy.set_param('/{}/camera_node/res_w'.format(self.veh_name), self.image_size_width)
+        rospy.set_param('/{}/camera_node/res_h'.format(self.veh_name), self.image_size_height)
 
         self.log('Waiting for camera to update its parameters.')
 
 
     def cb_camera_info(self, msg):
-        if self.camera_width == msg.width and self.camera_height == msg.height:
+        if self.image_size_width == msg.width and self.image_size_height == msg.height:
             self.log('Received camera info.', 'info')
 	    self.pcm = PinholeCameraModel()
             self.pcm.fromCameraInfo(msg)
@@ -101,14 +108,31 @@ class PreprocessorNode(DTROS):
             height, width, _ = img_rectified.shape
             cutoff_absolute = int(floor(height * self.top_cutoff_percent / 100.0))
             img_cutoff = img_rectified[cutoff_absolute:,:]
+            self.latest_image = img_cutoff
 
             if self.verbose:
                 utils.publish_image(self.bridge, self.pub_cutoff, img_cutoff)
 
-            # TODO Improve image contrast
+            img_ai = self.ai.apply_color_balance(img_cutoff, self.ai_output_scale)
 
-            img_out = img_cutoff
+            if img_ai is None:
+                self.calculate_new_parameters(None)
+                return
+
+            img_out = img_ai
             utils.publish_image(self.bridge, self.pub_image_out, img_out)
+
+
+    def calculate_new_parameters(self, event):
+        image = self.latest_image.copy()
+
+        if image is None:
+            self.log('Waiting for first image!')
+            return
+
+        self.ai.calculate_color_balance_thresholds(image, self.ai_calculation_scale, self.ai_color_balance_percentage)
+
+        self.log('New parameters computed.')
 
 
     def refresh_parameters(self):
