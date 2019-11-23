@@ -3,7 +3,7 @@ LOCAL=0
 ACCESSIBLE_LAUNCHFILES=1
 DB_NAME = DuckyMcDuckface
 DB_NAME_LOCAL = laptop
-DB_IP=0 # if set to 0 makefile will ping the hostname to get the IP
+DB_IP= # if not set makefile will ping the hostname to get the IP
 HOST = $(DB_NAME).local
 
 LAUNCHFILE_DIR = $(CURDIR)/launchfiles
