@@ -38,8 +38,8 @@ RUN_CMD_CORE = dts duckiebot demo --demo_name proj-lfi-core \
 		--duckiebot_name $(DB_NAME) --package_name duckietown_demos \
 		--image $(IMAGE_CORE) --debug
 else
+ifeq ($(DB_IP),)
 $(info Getting Duckiebot IP address)
-ifeq ($(DB_IP),0)
 DB_IP=$(shell ping -c 1 $(HOST) | grep -oP 'PING.*?\(\K[^)]+' )
 endif
 $(info $(DB_NAME) is at $(DB_IP))
