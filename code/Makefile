@@ -1,12 +1,11 @@
 # Set this to 0 to build/run on the duckiebot and to 1 to build/run locally
-LOCAL=1
-
+LOCAL=0
+ACCESSIBLE_LAUNCHFILES=1
 DB_NAME = DuckyMcDuckface
 DB_NAME_LOCAL = laptop
-
+DB_IP=0 # if set to 0 makefile will ping the hostname to get the IP
 HOST = $(DB_NAME).local
 
-DATA_DIR = $(CURDIR)/data
 LAUNCHFILE_DIR = $(CURDIR)/launchfiles
 
 TAG = daffy
@@ -26,13 +25,44 @@ ifeq ($(LOCAL),0)
 $(info Building/running on duckiebot)
 ARG_HOST = -H=$(HOST)
 ARCH = arm32v7
+DATA_DIR = /data
 else
 $(info Building/running locally)
 ARCH = amd64
+DATA_DIR = $(CURDIR)/data
 endif
 
 ifeq ($(LOCAL),0)
-RUN_CMD_CORE = dts duckiebot demo --demo_name proj-lfi-core --duckiebot_name $(DB_NAME) --package_name duckietown_demos --image $(IMAGE_CORE) --debug
+ifeq ($(ACCESSIBLE_LAUNCHFILES),0)
+RUN_CMD_CORE = dts duckiebot demo --demo_name proj-lfi-core \
+		--duckiebot_name $(DB_NAME) --package_name duckietown_demos \
+		--image $(IMAGE_CORE) --debug
+else
+$(info Getting Duckiebot IP address)
+ifeq ($(DB_IP),0)
+DB_IP=$(shell ping -c 1 $(HOST) | grep -oP 'PING.*?\(\K[^)]+' )
+endif
+$(info $(DB_NAME) is at $(DB_IP))
+
+RUN_CMD_CORE = docker $(ARG_HOST) run -it --rm --privileged --net=host \
+		--name demo_$(IMG_NAME_CORE) \
+		-v "$(DATA_DIR)":/data \
+		-e VEHICLE_NAME=$(DB_NAME) \
+		-e DUCKIEBOT_NAME=$(DB_NAME) \
+		-e ROS_MASTER_URI="http://$(DB_IP):11311" \
+		-e DUCKIEFLEET_ROOT="/data/config" \
+		-e DUCKIEBOT_IP=$(DB_IP) \
+		-e ROS_MASTER=$(DB_IP) \
+		-e DUCKIETOWN_SERVER=$(DB_IP) \
+		-e QT_X11_NO_MITSHM="1" \
+		--memory="800m" \
+		--memory-swap="2800m" \
+		-d \
+		$(IMAGE_CORE) \
+		roslaunch /data/launchfiles/proj-lfi-core.launch \
+		&& \
+		docker $(ARG_HOST) attach demo_proj-lfi-core
+endif
 else
 RUN_CMD_CORE = docker run -it --rm --privileged --net=host --name $(IMG_NAME_CORE) \
 		-v "$(DATA_DIR)":/data \
