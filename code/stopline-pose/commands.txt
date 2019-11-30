@@ -1,0 +1,19 @@
+Make sure  dt18_03_roscore_duckiebot-interface_1 is running
+$ dts devel watchtower stop -H wlan.local
+$ dts devel build -f --arch arm32v7 -H wlan.local
+add if necessary --ignore-watchtower
+$ docker -H wlan.local run --env ROS_MASTER_URI=http://192.168.1.76:11311/ --env ROS_IP=http://192.168.1.157 --env VEHICLE_NAME=wlan --env MAP_NAME=lane.yaml -it --privileged -v /data:/data --rm --net host duckietown/cra1-ar-calibration-pattern:v1-arm32v7
+
+
+To see rqt graph:
+$ dts start_gui_tools wlan 
+$ rostopic list
+$ rqt_graph
+$ rqt_image_view
+
+
+ips at home:
+computer: 192.168.0.24
+robot:    192.168.0.199
+
+$ docker -H wlan.local run --env ROS_MASTER_URI=http://192.168.0.199:11311/ --env ROS_IP=http://192.168.0.24 --env VEHICLE_NAME=wlan --env MAP_NAME=lane.yaml -it --privileged -v /data:/data --rm --net host duckietown/cra1-ar-calibration-pattern:v1-arm32v7

@@ -1,0 +1,11 @@
+<package>
+  <name>my_package</name>
+  <version>0.1.0</version>
+  <description>
+  This package is for the Duckietown CRA1 exercise: Augmented Reality with calibration pattern, lane and intersection.
+  </description>
+  <maintainer email="matthias.wieland@hotmail.com">Matthias Wieland</maintainer>
+  <license>None</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+</package>

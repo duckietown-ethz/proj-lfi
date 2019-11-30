@@ -1,0 +1,30 @@
+ordereddict
+([
+	('points', 
+		ordereddict
+		([
+			('TL', ['image01', [0, 0]]), ('TR', ['image01', [0, 1]]), ('BR', ['image01', [1, 1]]), ('BL', ['image01', [1, 0]])
+		])
+	), 
+	('segments', 
+	[
+		ordereddict
+		([
+			('points', ['TL', 'TR']), ('color', 'red')
+		]), 
+		ordereddict
+		([
+			('points', ['TR', 'BR']), ('color', 'green')
+		]), 
+		ordereddict
+		([
+			('points', ['BR', 'BL']), ('color', 'blue')
+		]), 
+		ordereddict
+		([
+			('points', ['BL', 'TL']), ('color', 'yellow')
+		])
+	]
+	)
+])
+
