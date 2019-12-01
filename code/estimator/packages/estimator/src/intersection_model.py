@@ -1,13 +1,15 @@
 import cv2
 import rospy
 import numpy as np
-from tf import TransformerROS
-from geometry_msgs.msg import PoseStamped, TransformStamped
+from tf.transformations import quaternion_from_euler, unit_vector, quaternion_inverse
+
+import utils
 
 class Intersection4wayModel():
 
-    def __init__(self, pcm, tf):
+    def __init__(self, pcm, scaled_homography, tf):
         self.pcm = pcm
+        self.scaled_homography = scaled_homography
         self.tf = tf
 
         # Origin of ther intersection coordinate system is the center of stopline 0.
@@ -20,30 +22,34 @@ class Intersection4wayModel():
         p = stopline_thickness
         s = center_markings_thickness
 
-        self.stopline_centers = []
-        self.stopline_centers.append(self.get_pose('intersection', [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]))
-        self.stopline_centers.append(self.get_pose('intersection', [-(q/2.0+s+q+p/2.0), p/2.0+q/2.0, 0.0], [0.0, 0.0, 0.0, 1.0]))
-        self.stopline_centers.append(self.get_pose('intersection', [-(q/2.0+s+q/2.0), p/2.0+2*q+s+p/2.0, 0.0], [0.0, 0.0, 0.0, 1.0]))
-        self.stopline_centers.append(self.get_pose('intersection', [q/2.0+p/2.0, p/2.0+q+s+q/2.0, 0.0], [0.0, 0.0, 0.0, 1.0]))
-        print(self.stopline_centers)
+        self.stopline_poses = []
+
+        orientation = unit_vector(quaternion_from_euler(0, 0, 0, axes='sxyz'))
+        self.stopline_poses.append(utils.get_pose('intersection', [0.0, 0.0, 0.0], orientation))
+
+        orientation = unit_vector(quaternion_from_euler(0, 0, -np.pi/2.0, axes='sxyz'))
+        self.stopline_poses.append(utils.get_pose('intersection', [-(q/2.0+s+q+p/2.0), p/2.0+q/2.0, 0.0], orientation))
+
+        orientation = unit_vector(quaternion_from_euler(0, 0, -np.pi, axes='sxyz'))
+        self.stopline_poses.append(utils.get_pose('intersection', [-(q/2.0+s+q/2.0), p/2.0+2*q+s+p/2.0, 0.0], orientation))
+
+        orientation = unit_vector(quaternion_from_euler(0, 0, -3.0*np.pi/2.0, axes='sxyz'))
+        self.stopline_poses.append(utils.get_pose('intersection', [q/2.0+p/2.0, p/2.0+q+s+q/2.0, 0.0], orientation))
+
+        self.intersection_poses = [utils.invert_pose(p, 'stopline_{}'.format(i)) for i, p in enumerate(self.stopline_poses)]
 
 
+    # Returns opencv image coordinates
     def get_stopline_centers_pixel_prediction(self):
-        self.stopline_centers_predicted = []
+        stopline_poses_predicted = []
 
-        self.tf.waitForTransform('camera', 'intersection', rospy.Time(0), rospy.Duration(10))
+        self.tf.waitForTransform('axle', 'intersection', rospy.Time(0), rospy.Duration(1))
 
-        for i in range(4):
-            prediction_camera_frame = self.tf.transformPose('camera', self.stopline_centers[i])
-            # TODO Filter points behind the camera
-            position = prediction_camera_frame.pose.position
-            prediction_pixel_rectified = self.pcm.project3dToPixel((position.x, position.y, position.z))
-            prediction_pixel_unrectified = self.unrectifyPoint(prediction_pixel_rectified)
+        for i in range(len(self.stopline_poses)):
+            prediction_axle_frame = self.tf.transformPose('axle', self.stopline_poses[i])
+            stopline_poses_predicted.append(prediction_axle_frame.pose)
 
-            rounded = (int(prediction_pixel_unrectified[0]), int(prediction_pixel_unrectified[1]))
-            self.stopline_centers_predicted.append(rounded)
-
-        return self.stopline_centers_predicted
+        return stopline_poses_predicted
 
 
     # Translated to python from https://docs.ros.org/api/image_geometry/html/c++/pinhole__camera__model_8cpp_source.html
@@ -56,39 +62,3 @@ class Intersection4wayModel():
         point_unrectified = image_points[0][0]
 
         return (point_unrectified[0], point_unrectified[1]);
-
-
-    def get_pose(self, frame, position, orientation):
-        p = PoseStamped()
-        p.header.stamp = rospy.Time(0)
-        p.header.frame_id = frame
-
-        p.pose.position.x = position[0]
-        p.pose.position.y = position[1]
-        p.pose.position.z = position[2]
-
-        p.pose.orientation.x = orientation[0]
-        p.pose.orientation.y = orientation[1]
-        p.pose.orientation.z = orientation[2]
-        p.pose.orientation.w = orientation[3]
-
-        return p
-
-
-    def get_transform(self, frame_parent, frame_child, position, orientation):
-        t = TransformStamped()
-        t.header.frame_id = frame_parent
-        now = rospy.Time.now()
-        t.header.stamp = now
-        print('Setting transformation for ' + str(now))
-        t.child_frame_id = frame_child
-        t.transform.translation.x = position[0]
-        t.transform.translation.y = position[1]
-        t.transform.translation.z = position[2]
-
-        t.transform.rotation.x = orientation[0]
-        t.transform.rotation.y = orientation[1]
-        t.transform.rotation.z = orientation[2]
-        t.transform.rotation.w = orientation[3]
-
-        return t

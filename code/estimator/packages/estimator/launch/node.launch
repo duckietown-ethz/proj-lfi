@@ -2,6 +2,11 @@
 	<arg name="param_file_name" default="default" doc="Specify a param file." />
 
 	<group ns="$(arg veh)">
+		<node pkg="tf" type="static_transform_publisher" name="tf_vehicle_cam"
+        args="0.06 0.0 0.085
+			0.54952518 -0.54952518 0.44499672 -0.44499672
+            axle camera 100" />
+
 		<node pkg="estimator" type="preprocessor_node.py" name="preprocessor_node" output="screen">
 			<rosparam command="load" file="$(find estimator)/config/preprocessor_node/$(arg param_file_name).yaml"/>
 
@@ -19,6 +24,7 @@
 			<rosparam command="load" file="$(find estimator)/config/localization_node/$(arg param_file_name).yaml"/>
 
 			<remap from="localization_node/image_in/compressed" to="birdseye_node/image_out/compressed"/>
+			<remap from="localization_node/camera_info" to="camera_node/camera_info"/>
 			<!-- Reset state if the image stream loops -->
 			<remap from="localization_node/reset" to="camera_node/loop"/>
 		</node>

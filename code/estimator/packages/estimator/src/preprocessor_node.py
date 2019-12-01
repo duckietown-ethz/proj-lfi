@@ -96,7 +96,7 @@ class PreprocessorNode(DTROS):
                 self.parametersChanged = False
 
             img_original = utils.read_image(msg)
-            if img_original == None:
+            if img_original is None:
                 return
 
             img_rectified = img_original.copy()
@@ -124,11 +124,11 @@ class PreprocessorNode(DTROS):
 
 
     def calculate_new_parameters(self, event):
-        image = self.latest_image.copy()
-
-        if image is None:
+        if self.latest_image is None:
             self.log('Waiting for first image!')
             return
+
+        image = self.latest_image.copy()
 
         self.ai.calculate_color_balance_thresholds(image, self.ai_calculation_scale, self.ai_color_balance_percentage)
 
