@@ -4,6 +4,7 @@ from duckietown_utils.jpg import bgr_from_jpg
 from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import Quaternion, PoseStamped, TransformStamped
 from tf.transformations import quaternion_inverse, quaternion_multiply
+from tf import TransformerROS
 
 
 def read_image(image_msg):
@@ -110,18 +111,30 @@ def get_transform(frame_parent, frame_child, position, orientation):
 
     return t
 
-def invert_pose(pose, frame_id):
-    inverted = PoseStamped()
-    inverted.header.stamp = pose.header.stamp
-    inverted.header.frame_id = frame_id
+def invert_pose(pose):
+    position, orientation = pose_to_tuple(pose)
 
-    inverted.pose.position.x = -pose.pose.position.x
-    inverted.pose.position.y = -pose.pose.position.y
-    inverted.pose.position.z = -pose.pose.position.z
+    transformer = TransformerROS()
+    transform = get_transform('frame1', 'frame2', position, orientation)
+    transformer.setTransform(transform)
+    frame1_origin_frame1 = get_pose('frame1', [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0])
+    frame1_origin_frame2 = transformer.transformPose('frame2', frame1_origin_frame1)
 
-    inverted.pose.orientation = tuple_to_quat(quaternion_inverse(quat_to_tuple(pose.pose.orientation)))
+    return frame1_origin_frame2.pose
 
-    return inverted
+
+
+#     inverted = PoseStamped()
+#     inverted.header.stamp = pose.header.stamp
+#     inverted.header.frame_id = frame_id
+# 
+#     inverted.pose.position.x = -pose.pose.position.x
+#     inverted.pose.position.y = -pose.pose.position.y
+#     inverted.pose.position.z = -pose.pose.position.z
+# 
+#     inverted.pose.orientation = tuple_to_quat(quaternion_inverse(quat_to_tuple(pose.pose.orientation)))
+# 
+#     return inverted
 
 
 def apply_homogeneous_transform(point, matrix, invert=False):

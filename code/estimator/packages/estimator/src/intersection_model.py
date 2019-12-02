@@ -36,7 +36,9 @@ class Intersection4wayModel():
         orientation = unit_vector(quaternion_from_euler(0, 0, -3.0*np.pi/2.0, axes='sxyz'))
         self.stopline_poses.append(utils.get_pose('intersection', [q/2.0+p/2.0, p/2.0+q+s+q/2.0, 0.0], orientation))
 
-        self.intersection_poses = [utils.invert_pose(p, 'stopline_{}'.format(i)) for i, p in enumerate(self.stopline_poses)]
+        intersection_poses = [utils.invert_pose(p.pose) for p in self.stopline_poses]
+        self.intersection_poses = [utils.stamp_pose('stopline_{}'.format(i), p) for i, p in enumerate(intersection_poses)]
+
 
 
     # Returns opencv image coordinates
