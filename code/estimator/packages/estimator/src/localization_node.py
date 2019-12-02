@@ -51,12 +51,11 @@ class LocalizationNode(DTROS):
 
         # Publishers
         self.pub_clustering = self.publisher('~verbose/clustering/compressed', CompressedImage, queue_size=1)
-        self.pub_intersection = self.publisher('~verbose/intersection/compressed', CompressedImage, queue_size=1)
         self.pub_red_filter = self.publisher('~verbose/red_filter/compressed', CompressedImage, queue_size=1)
-        self.pub_stoplines_measured = self.publisher('~verbose/stoplines_measured', PoseArray, queue_size=1)
-        self.pub_stoplines_predicted = self.publisher('~verbose/stoplines_predicted', PoseArray, queue_size=1)
-        self.pub_pose_estimates = self.publisher('~verbose/pose_estimates', PoseArray, queue_size=1)
-        self.pub_best_pose_estimate = self.publisher('~verbose/best_pose_estimate', PoseStamped, queue_size=1)
+        self.pub_stoplines_measured = self.publisher('~stoplines_measured', PoseArray, queue_size=1)
+        self.pub_stoplines_predicted = self.publisher('~stoplines_predicted', PoseArray, queue_size=1)
+        self.pub_pose_estimates = self.publisher('~pose_estimates', PoseArray, queue_size=1)
+        self.pub_best_pose_estimate = self.publisher('~best_pose_estimate', PoseStamped, queue_size=1)
 
         self.bridge = CvBridge()
 
@@ -76,7 +75,7 @@ class LocalizationNode(DTROS):
             camera_info = get_camera_info_for_robot(self.veh_name)
             self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
             self.model = Intersection4wayModel(self.pcm, self.scaled_homography)
-            self.stopline_detector = StoplineDetector(self.scaled_homography)
+            self.stopline_detector = StoplineDetector(self.scaled_homography, point_reduction_factor=1)
             self.stopline_filter = StoplineFilter(min_quality=0.5, policy='weighted_avg')
 
             # This topic subscription is only needed initially, so it can be unregistered.
@@ -177,12 +176,13 @@ class LocalizationNode(DTROS):
                 # Filter pose estimates
                 self.stopline_filter.update_stopline_poses(poses_estimated, cluster_qualities)
                 best_pose_estimate = self.stopline_filter.get_best_estimate()
-                self.pub_best_pose_estimate.publish(utils.stamp_pose('intersection', best_pose_estimate))
 
-                position, orientation = utils.pose_to_tuple(best_pose_estimate)
+                if best_pose_estimate is not None:
+                    self.pub_best_pose_estimate.publish(utils.stamp_pose('intersection', best_pose_estimate))
 
-                self.last_position = position
-                self.last_orientation = orientation
+                    position, orientation = utils.pose_to_tuple(best_pose_estimate)
+                    self.last_position = position
+                    self.last_orientation = orientation
 
 
             self.log(tk.getall())

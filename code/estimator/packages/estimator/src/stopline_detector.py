@@ -7,6 +7,7 @@ from geometry_msgs.msg import PoseStamped, TransformStamped
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
+from hdbscan import HDBSCAN
 
 import utils
 
@@ -16,8 +17,9 @@ class StoplineDetector():
     This class assumes images to be in birdseye perspective.
     '''
 
-    def __init__(self, scaled_homography):
+    def __init__(self, scaled_homography, point_reduction_factor=1):
         self.scaled_homography = scaled_homography
+        self.point_reduction_factor = int(point_reduction_factor)
 
 
     def filter_red(self, image, verbose=False, tk=None):
@@ -51,6 +53,8 @@ class StoplineDetector():
         # Get all coordinates where mask is set
         x, y = np.where(mask == 255)
         points = np.vstack([x,y]).T
+        points = points[::self.point_reduction_factor,:]
+        dbscan_min_samples = int(dbscan_min_samples / float(self.point_reduction_factor))
 
         clusters = []
 
@@ -63,8 +67,12 @@ class StoplineDetector():
             # TODO Can this be run in parallel (multi-core) somehow?
             db_scan = DBSCAN(eps=dbscan_eps, min_samples=dbscan_min_samples)
             db_scan_result = db_scan.fit(points_normalized)
-
             labels = db_scan_result.labels_
+
+            # TODO Test ths more thoroughly
+#             hdb_scan = HDBSCAN(min_cluster_size=dbscan_min_samples)
+#             labels = hdb_scan.fit_predict(points_normalized)
+
             unique_labels = set(labels)
             tk.completed('clustering->fitting')
 
@@ -167,7 +175,7 @@ class StoplineDetector():
 
         # Calculate percentage of image occupied by cluster
         px_cnt = self.scaled_homography.current_height * self.scaled_homography.current_width
-        percentage = cluster_points.shape[0] / float(px_cnt)
+        percentage = (cluster_points.shape[0] * self.point_reduction_factor) / float(px_cnt)
 
         # Constrain to [0,1] since max_percentage was only determined emperically
         quality = percentage / float(max_percentage)
