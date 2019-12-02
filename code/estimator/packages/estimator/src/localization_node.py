@@ -172,7 +172,7 @@ class LocalizationNode(DTROS):
                 utils.publish_image(self.bridge, self.pub_red_filter, dbg_image)
 
             # Clustering red points
-            clusters, cluster_means = self.stopline_detector.cluster_mask(red_mask, self.parameters['~eps'], self.parameters['~min_samples'], tk=tk)
+            clusters = self.stopline_detector.cluster_mask(red_mask, self.parameters['~eps'], self.parameters['~min_samples'], tk=tk)
             # TODO Handle case if there are no clusters found
 
             if len(clusters) > 0:

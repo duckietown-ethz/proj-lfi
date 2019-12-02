@@ -54,7 +54,6 @@ class StoplineDetector():
         points = np.vstack([x,y]).T
 
         clusters = []
-        cluster_means = []
 
         if points.shape[0] > 0:
             # Normalize points so the eps parameter doesn't depend on the magnitude of the data
@@ -79,13 +78,9 @@ class StoplineDetector():
                 cluster_mask = (labels == label)
                 cluster_points = points[cluster_mask]
                 clusters.append(cluster_points)
-
-                cluster_mean = np.mean(cluster_points, axis=0)
-                cluster_means.append(cluster_mean)
             tk.completed('clustering->means')
 
-        # TODO Do not calculate and return means as they are not necessary
-        return clusters, cluster_means
+        return clusters
 
 
     # Points must be in matrix coordinates
