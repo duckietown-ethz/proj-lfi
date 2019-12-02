@@ -10,15 +10,14 @@ from sklearn.neighbors import KNeighborsClassifier
 
 import utils
 
+
 class StoplineDetector():
     '''
     This class assumes images to be in birdseye perspective.
     '''
 
-    def __init__(self, pcm, scaled_homography, tf):
-        self.pcm = pcm
+    def __init__(self, scaled_homography):
         self.scaled_homography = scaled_homography
-        self.tf = tf
 
 
     def filter_red(self, image, verbose=False, tk=None):
@@ -159,6 +158,23 @@ class StoplineDetector():
 
         return pose
 
+
+    # Determines the quality of a point cluster taking into account the image resolution
+    # Quality is given in a [0,1] interval (1 is best)
+    def cluster_quality(self, cluster_points):
+        # A stopline occupies at most 4356 pixels at resolution 480x640 (number was determined experimentally)
+        max_percentage = 4356 / float(640 * 480)
+
+        # Calculate percentage of image occupied by cluster
+        px_cnt = self.scaled_homography.current_height * self.scaled_homography.current_width
+        percentage = cluster_points.shape[0] / float(px_cnt)
+
+        # Constrain to [0,1] since max_percentage was only determined emperically
+        quality = percentage / float(max_percentage)
+
+        return np.clip(quality, 0.0, 1.0)
+
+
     def draw_debug_image(self, image, stopline_poses_reference, stopline_poses_measured, pixel_clusters, labels):
         stopline_colors = {
             0: (255,0,0),
@@ -184,6 +200,7 @@ class StoplineDetector():
             self.draw_axle_pose_in_image(image, pose, color)
 
         return image
+
 
     # TODO Add arrow to indicate orientation
     def draw_axle_pose_in_image(self, image, pose, color):

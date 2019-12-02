@@ -40,18 +40,15 @@ def quat_to_tuple(quaternion):
     return (quaternion.x, quaternion.y, quaternion.z, quaternion.w)
 
 
+def pos_to_tuple(position):
+    return (position.x, position.y, position.z)
+
+
 # TODO Rename to pose_to_tuples
 def pose_to_tuple(pose):
     position = (pose.position.x, pose.position.y, pose.position.z)
     orientation = quat_to_tuple(pose.orientation)
     return position, orientation
-
-
-# Taken from https://stackoverflow.com/questions/23260939/distance-or-angular-magnitude-between-two-quaternions?noredirect=1
-# def quat_distance(quaternion1, quaternion2):
-#     quat_diff = quaternion_multiply(quaternion_inverse(quaternion1), quaternion2)
-#     angle = 2 * np.arctan2(np.linalg.norm(quat_diff[0:2]), quat_diff[3])
-#     return angle
 
 
 # Taken from https://github.com/KieranWynn/pyquaternion/blob/446c31cba66b708e8480871e70b06415c3cb3b0f/pyquaternion/quaternion.py#L772
@@ -66,9 +63,9 @@ def quat_distance(q0, q1):
         return d_plus
 
 # Change this to get_pose_stamped and add another function get_pose
-def get_pose(frame, position, orientation):
+def get_pose(frame, position, orientation, stamp=rospy.Time(0)):
     p = PoseStamped()
-    p.header.stamp = rospy.Time(0)
+    p.header.stamp = stamp
     p.header.frame_id = frame
 
     p.pose.position.x = position[0]
@@ -82,9 +79,9 @@ def get_pose(frame, position, orientation):
 
     return p
 
-def stamp_pose(frame, pose):
+def stamp_pose(frame, pose, stamp=rospy.Time(0)):
     p = PoseStamped()
-    p.header.stamp = rospy.Time(0)
+    p.header.stamp = stamp
     p.header.frame_id = frame
 
     p.pose.position = pose.position
@@ -93,12 +90,10 @@ def stamp_pose(frame, pose):
     return p
 
 
-def get_transform(frame_parent, frame_child, position, orientation):
+def get_transform(frame_parent, frame_child, position, orientation, stamp=rospy.Time(0)):
     t = TransformStamped()
     t.header.frame_id = frame_parent
-    now = rospy.Time.now()
-    t.header.stamp = now
-    print('Setting transformation for ' + str(now))
+    t.header.stamp = stamp
     t.child_frame_id = frame_child
     t.transform.translation.x = position[0]
     t.transform.translation.y = position[1]
@@ -123,18 +118,25 @@ def invert_pose(pose):
     return frame1_origin_frame2.pose
 
 
+# Taken from https://stackoverflow.com/questions/12374087/average-of-multiple-quaternions
+def average_quaternion(quaternions, weights):
+    # weights need to sum up to 1
+    # quaternions and weights need to be lists of same length
 
-#     inverted = PoseStamped()
-#     inverted.header.stamp = pose.header.stamp
-#     inverted.header.frame_id = frame_id
-# 
-#     inverted.pose.position.x = -pose.pose.position.x
-#     inverted.pose.position.y = -pose.pose.position.y
-#     inverted.pose.position.z = -pose.pose.position.z
-# 
-#     inverted.pose.orientation = tuple_to_quat(quaternion_inverse(quat_to_tuple(pose.pose.orientation)))
-# 
-#     return inverted
+    weight_matrix = np.tile(np.array(weights), (4, 1)) # shape: 4xlen(weights)
+    quat_matrix = np.array([quat_to_tuple(q) for q in quaternions]).T # shape: 4xlen(quaternions)
+
+    weighted_quats = weight_matrix * quat_matrix # element-wise multiplication
+
+    Q = weighted_quats # shape: 4xlen(quaternions)
+    Q_QT = np.dot(Q, Q.T)
+    eig_vals, eig_vecs = np.linalg.eig(Q_QT)
+
+    # Get eigenvector with largest eigenvalue
+    idx_max = np.argmax(eig_vals)
+    average_quat = eig_vecs[:,idx_max]
+
+    return average_quat
 
 
 def apply_homogeneous_transform(point, matrix, invert=False):

@@ -7,19 +7,18 @@ import rospkg
 
 from duckietown import DTROS
 from sensor_msgs.msg import CompressedImage, CameraInfo
-from geometry_msgs.msg import Point, Quaternion, Pose, PoseArray
+from geometry_msgs.msg import Point, Quaternion, PoseStamped, PoseArray
 from std_msgs.msg import Bool
 from cv_bridge import CvBridge, CvBridgeError
 
 import utils
-from feature_tracker import FeatureTracker
 from config_loader import get_camera_info_for_robot, get_homography_for_robot
 from intersection_model import Intersection4wayModel
 from scaled_homography import ScaledHomography
 from stopline_detector import StoplineDetector
+from stopline_filter import StoplineFilter
 from image_geometry import PinholeCameraModel
-from tf import TransformListener, TransformBroadcaster
-from tf.transformations import quaternion_from_matrix, unit_vector
+from tf.transformations import unit_vector, quaternion_from_euler
 from timekeeper import TimeKeeper
 
 
@@ -31,8 +30,8 @@ class LocalizationNode(DTROS):
         self.veh_name = rospy.get_namespace().strip("/")
 
         # Initialize parameters
-        rospy.set_param('~x', 0.35)
-        rospy.set_param('~y', 0.0)
+        rospy.set_param('~x', 0.0)
+        rospy.set_param('~y', -0.20)
         rospy.set_param('~z', 0.0)
 
         rospy.set_param('~eps', 0.5)
@@ -51,25 +50,18 @@ class LocalizationNode(DTROS):
         self.sub_reset = self.subscriber('~reset', Bool, self.cb_reset, queue_size=1)
 
         # Publishers
-        self.pub_keypoints = self.publisher('~verbose/keypoints/compressed', CompressedImage, queue_size=1)
+        self.pub_clustering = self.publisher('~verbose/clustering/compressed', CompressedImage, queue_size=1)
         self.pub_intersection = self.publisher('~verbose/intersection/compressed', CompressedImage, queue_size=1)
-        self.pub_stopline_prediction = self.publisher('~verbose/stopline_prediction/compressed', CompressedImage, queue_size=1)
         self.pub_red_filter = self.publisher('~verbose/red_filter/compressed', CompressedImage, queue_size=1)
-        self.pub_stopline_poses = self.publisher('~verbose/stopline_poses', PoseArray, queue_size=1)
-        self.pub_stopline_poses_predicted = self.publisher('~verbose/stopline_poses_predicted', PoseArray, queue_size=1)
+        self.pub_stoplines_measured = self.publisher('~verbose/stoplines_measured', PoseArray, queue_size=1)
+        self.pub_stoplines_predicted = self.publisher('~verbose/stoplines_predicted', PoseArray, queue_size=1)
         self.pub_pose_estimates = self.publisher('~verbose/pose_estimates', PoseArray, queue_size=1)
+        self.pub_best_pose_estimate = self.publisher('~verbose/best_pose_estimate', PoseStamped, queue_size=1)
 
         self.bridge = CvBridge()
-        self.feature_tracker = FeatureTracker(400, 50, self.log)
 
-        self.start_position = np.matrix([640/2.0, 480/4.0]).T
-        self.start_angle = 180.0
-        self.x = rospy.get_param('~x')
-        self.cnt = 0
-        self.last_seq = None
-
-        self.tf = TransformListener()
-        self.br = TransformBroadcaster()
+        self.last_position = None
+        self.last_orientation = None
 
         self.scaled_homography = None
 
@@ -83,8 +75,9 @@ class LocalizationNode(DTROS):
             homography = get_homography_for_robot(self.veh_name)
             camera_info = get_camera_info_for_robot(self.veh_name)
             self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
-            self.model = Intersection4wayModel(self.pcm, self.scaled_homography, self.tf)
-            self.stopline_detector = StoplineDetector(self.pcm, self.scaled_homography, self.tf)
+            self.model = Intersection4wayModel(self.pcm, self.scaled_homography)
+            self.stopline_detector = StoplineDetector(self.scaled_homography)
+            self.stopline_filter = StoplineFilter(min_quality=0.5, policy='weighted_avg')
 
             # This topic subscription is only needed initially, so it can be unregistered.
             self.sub_camera_info.unregister()
@@ -101,21 +94,8 @@ class LocalizationNode(DTROS):
     def cb_reset(self, msg):
         do_reset = msg.data
         if do_reset:
-            self.feature_tracker.reset()
-            self.x = rospy.get_param('~x')
-            self.cnt = 0
-            self.last_seq = None
-
-
-    def draw_ref_point(self, image, position, angle, length):
-        # position in [px]
-        # angle in [deg]
-
-        angle_rad = np.deg2rad(angle)
-        pt1 = (int(position[1]), int(position[0]))
-        pt2 = (int(pt1[0] + length * np.sin(angle_rad)), int(pt1[1] + length * np.cos(angle_rad)))
-
-        return cv2.arrowedLine(image, pt1, pt2, (0, 0, 255), 1)
+            self.last_position = None
+            self.last_orientation = None
 
 
     def cb_image_in(self, msg):
@@ -135,35 +115,16 @@ class LocalizationNode(DTROS):
             if img_original is None:
                 return
 
+            if self.last_position is None or self.last_orientation is None:
+                # Set initial position
+                start_orientation = unit_vector(quaternion_from_euler(0, 0, np.pi/2.0, axes='sxyz'))
+                start_position = [rospy.get_param('~x'), rospy.get_param('~y'), rospy.get_param('~z')]
+                axle_pose = utils.get_pose('intersection', start_position, start_orientation)
+            else:
+                axle_pose = utils.get_pose('intersection', self.last_position, self.last_orientation)
 
-            ##############################
-            # Debug code to simulate motor commands
-            seq = msg.header.seq
-            if self.last_seq != None:
-                seq_diff = seq - self.last_seq
-                self.cnt += seq_diff
-                if self.cnt > 50:
-                    #pass
-                    self.x -= 0.01 * seq_diff
-            self.last_seq = seq
-
-            x = self.x
-            y = rospy.get_param('~y')
-            z = rospy.get_param('~z')
-            position = (x, y, z)
-            m = np.matrix([
-                [0,1,0,0],
-                [-1,0,0,0],
-                [0,0,1,0],
-                [0,0,0,1]])
-            orientation = unit_vector(quaternion_from_matrix(m))
-            self.br.sendTransform(position, orientation, rospy.Time.now(), 'intersection', 'axle')
-            # Debug code end
-            ##############################
-
-
-            stopline_poses_predicted = self.model.get_stopline_centers_pixel_prediction()
-            self.publish_pose_array(self.pub_stopline_poses_predicted, 'axle', stopline_poses_predicted)
+            stopline_poses_predicted = self.model.get_stopline_centers_pixel_prediction(axle_pose)
+            self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
             tk.completed('predict poses')
 
             # Filtering red
@@ -173,8 +134,11 @@ class LocalizationNode(DTROS):
 
             # Clustering red points
             clusters = self.stopline_detector.cluster_mask(red_mask, self.parameters['~eps'], self.parameters['~min_samples'], tk=tk)
-            # TODO Handle case if there are no clusters found
 
+            # Calculate quality indicators of clusters
+            cluster_qualities = list([self.stopline_detector.cluster_quality(c) for c in clusters])
+
+            # TODO Handle case if there are no clusters found
             if len(clusters) > 0:
                 # Calculate stopline poses from clusters
                 stopline_poses_measured = []
@@ -183,79 +147,45 @@ class LocalizationNode(DTROS):
                     stopline_poses_measured.append(pose)
                 tk.completed('stopline pose calculations')
 
+                # Classify measured poses based on the predicted poses
                 labels = self.stopline_detector.classify_poses(stopline_poses_measured, stopline_poses_predicted)
                 tk.completed('classifying poses')
 
+                # Correct orientation of measured poses based on the predicted poses
                 stopline_poses_corrected = []
                 for pose_measured, label in zip(stopline_poses_measured, labels):
                     corrected = self.stopline_detector.correct_orientation(pose_measured, stopline_poses_predicted[label])
                     stopline_poses_corrected.append(corrected)
-                self.publish_pose_array(self.pub_stopline_poses, 'axle', stopline_poses_corrected)
+                self.publish_pose_array(self.pub_stoplines_measured, 'axle', stopline_poses_corrected)
                 tk.completed('corrected poses')
 
                 if self.verbose:
+                    # TODO Write cluster quality in cluster center
                     img_debug = self.stopline_detector.draw_debug_image(img_original, stopline_poses_predicted, stopline_poses_corrected, clusters, labels)
-                    utils.publish_image(self.bridge, self.pub_keypoints, img_debug)
+                    utils.publish_image(self.bridge, self.pub_clustering, img_debug)
                     tk.completed('debug image')
 
-                for i, intersection_pose in enumerate(self.model.intersection_poses):
-                    position, orientation = utils.pose_to_tuple(intersection_pose.pose)
-                    transform = utils.get_transform(intersection_pose.header.frame_id, 'intersection_{}'.format(i), position, orientation)
-                    self.tf.setTransform(transform)
-
-                for stopline_pose, label in zip(stopline_poses_corrected, labels):
-                    position, orientation = utils.pose_to_tuple(stopline_pose)
-                    transform = utils.get_transform('axle', 'stopline_{}'.format(label), position, orientation)
-                    self.tf.setTransform(transform)
-
+                # Calculate pose estimate of axle in intersection coordinate frame
                 poses_estimated = []
-                for i in range(len(self.model.intersection_poses)):
-                    frame_origin_intersection = utils.get_pose('intersection_{}'.format(i), [0.0,0.0,0.0], [0.0,0.0,0.0,1])
-
-                    pose_estimation = self.tf.transformPose('axle', frame_origin_intersection)
+                for stopline_pose, label in zip(stopline_poses_corrected, labels):
+                    pose_estimation = self.model.get_axle_pose_from_stopline_pose(stopline_pose, label)
                     poses_estimated.append(pose_estimation.pose)
 
-                self.publish_pose_array(self.pub_pose_estimates, 'axle', poses_estimated)
+                self.publish_pose_array(self.pub_pose_estimates, 'intersection', poses_estimated)
                 tk.completed('pose estimations')
 
+                # Filter pose estimates
+                self.stopline_filter.update_stopline_poses(poses_estimated, cluster_qualities)
+                best_pose_estimate = self.stopline_filter.get_best_estimate()
+                self.pub_best_pose_estimate.publish(utils.stamp_pose('intersection', best_pose_estimate))
+
+                position, orientation = utils.pose_to_tuple(best_pose_estimate)
+
+                self.last_position = position
+                self.last_orientation = orientation
+
+
             self.log(tk.getall())
-            return
-
-
-
-
-
-
-
-
-
-
-
-
-
-            # NOT REACHABLE
-
-            img_keypoints = img_original.copy()
-            position, angle = self.feature_tracker.process_image(img_original, image_out_keypoints=img_keypoints)
-
-            img_position = img_keypoints.copy()
-            img_position = self.draw_ref_point(img_position, position, angle, 10)
-
-            px_per_m_original = 500.0
-            scale_x = 480.0 / 192
-            scale_y = 640.0 / 256
-            px_per_m_x = px_per_m_original / scale_x
-            px_per_m_y = px_per_m_original / scale_y
-
-            position_meter = np.array([0 + position[0] / px_per_m_x, 0 + position[1] / px_per_m_y])
-
-            img_intersection = self.draw_position_on_intersection(position_meter, angle)
-
-            #position_world = [position[0] / px_per_m_x, position[1] / px_per_m_y]
-
-            if self.verbose:
-                utils.publish_image(self.bridge, self.pub_keypoints, img_keypoints)
-                utils.publish_image(self.bridge, self.pub_intersection, img_intersection)
 
     def draw_position_on_intersection(self, position_meter, angle):
         rospack = rospkg.RosPack()
