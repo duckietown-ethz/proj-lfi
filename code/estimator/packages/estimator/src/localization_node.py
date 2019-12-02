@@ -198,28 +198,22 @@ class LocalizationNode(DTROS):
                     utils.publish_image(self.bridge, self.pub_keypoints, img_debug)
                     tk.completed('debug image')
 
-                # TODO Fix and clean up code below (it is not working correctly)
                 for i, intersection_pose in enumerate(self.model.intersection_poses):
                     position, orientation = utils.pose_to_tuple(intersection_pose.pose)
-                    # TODO Is this possible using setTransform on the listener? (also search for other occurrences of sendTransform)
-                    self.log('{} -> {}'.format('intersection_{}'.format(i), intersection_pose.header.frame_id))
-                    self.br.sendTransform(position, orientation, rospy.Time.now(), 'intersection_{}'.format(i), intersection_pose.header.frame_id)
+                    transform = utils.get_transform(intersection_pose.header.frame_id, 'intersection_{}'.format(i), position, orientation)
+                    self.tf.setTransform(transform)
 
                 for stopline_pose, label in zip(stopline_poses_corrected, labels):
                     position, orientation = utils.pose_to_tuple(stopline_pose)
-                    self.log('{} -> {}'.format('stopline_{}'.format(label), 'axle'))
-                    self.br.sendTransform(position, orientation, rospy.Time.now(), 'stopline_{}'.format(label), 'axle')
+                    transform = utils.get_transform('axle', 'stopline_{}'.format(label), position, orientation)
+                    self.tf.setTransform(transform)
 
                 poses_estimated = []
                 for i in range(len(self.model.intersection_poses)):
-                    self.log(i)
                     frame_origin_intersection = utils.get_pose('intersection_{}'.format(i), [0.0,0.0,0.0], [0.0,0.0,0.0,1])
 
-                    try:
-                        pose_estimation = self.tf.transformPose('axle', frame_origin_intersection)
-                        poses_estimated.append(pose_estimation.pose)
-                    except:
-                        pass
+                    pose_estimation = self.tf.transformPose('axle', frame_origin_intersection)
+                    poses_estimated.append(pose_estimation.pose)
 
                 self.publish_pose_array(self.pub_pose_estimates, 'axle', poses_estimated)
                 tk.completed('pose estimations')
@@ -240,7 +234,6 @@ class LocalizationNode(DTROS):
 
 
             # NOT REACHABLE
-            # TODO Can we still make use of this code?
 
             img_keypoints = img_original.copy()
             position, angle = self.feature_tracker.process_image(img_original, image_out_keypoints=img_keypoints)
