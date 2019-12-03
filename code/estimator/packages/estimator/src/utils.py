@@ -130,7 +130,7 @@ def average_quaternion(quaternions, weights):
 
     Q = weighted_quats # shape: 4xlen(quaternions)
     Q_QT = np.dot(Q, Q.T)
-    eig_vals, eig_vecs = np.linalg.eig(Q_QT)
+    eig_vals, eig_vecs = np.linalg.eigh(Q_QT) # eigh can be used since Q_QT is real-symmetric
 
     # Get eigenvector with largest eigenvalue
     idx_max = np.argmax(eig_vals)
