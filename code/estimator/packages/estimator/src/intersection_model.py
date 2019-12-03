@@ -51,7 +51,7 @@ class Intersection4wayModel():
 
 
     # axle_pose needs to be in intersection coordinates
-    def get_stopline_centers_pixel_prediction(self, axle_pose):
+    def get_stopline_poses_reference(self, axle_pose):
         position, orientation = utils.pose_to_tuple(axle_pose.pose)
         transform = utils.get_transform('intersection', 'axle', position, orientation)
         self.transformer.setTransform(transform)
@@ -74,16 +74,3 @@ class Intersection4wayModel():
         # TODO Can this be done with only one intersection frame?
         axle_pose = self.transformer.transformPose('intersection_{}'.format(index), axle_origin)
         return axle_pose
-
-
-    # TODO Remove if it is not used anymore
-    # Translated to python from https://docs.ros.org/api/image_geometry/html/c++/pinhole__camera__model_8cpp_source.html
-    def unrectifyPoint(self, point_rectified):
-        ray = self.pcm.projectPixelTo3dRay(point_rectified)
-        # Project the ray on the image
-        r_vec, _ = cv2.Rodrigues(self.pcm.R)
-        t_vec = np.zeros((3,1))
-        image_points, _ = cv2.projectPoints(np.array([ray]), r_vec, t_vec, self.pcm.K, self.pcm.D)
-        point_unrectified = image_points[0][0]
-
-        return (point_unrectified[0], point_unrectified[1]);
