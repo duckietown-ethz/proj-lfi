@@ -7,7 +7,6 @@ from geometry_msgs.msg import PoseStamped, TransformStamped
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
-from hdbscan import HDBSCAN
 
 import utils
 
