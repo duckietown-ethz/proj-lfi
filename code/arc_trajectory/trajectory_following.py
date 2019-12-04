@@ -38,9 +38,10 @@ class TrajectoryControl(DTROS):
 
     def callback(self, msg):
         '''
-
-        :param msg:
-        :return:
+        Callback Function, that subscribes to the incoming LanePose (position and orientation of duckiebot) message and
+        publishes the PoseStamped message with the entries d and phi, that can be used for the controller
+        :param msg: LanePose ros message
+        :return: None
         '''
         # compte motor commands for lefta nd right motor with a simple line following pid controller
         # --> this function is INCOMPLETE!
@@ -50,14 +51,16 @@ class TrajectoryControl(DTROS):
         d, phi = self.relative_pose(msg)
 
         # convert to LanePose() message
+        d, phi = self.relative_pose(message_pose)
+        radius = self.y_track[-1]
         print("distance: " + str(d))
         print("angle: " + str(phi))
         # convert to LanePose() message
         msg_pub = LanePose()
-        #msg_pub.header.stamp = ...
+        msg_pub.header.stamp = msg.header.stamp
         msg_pub.d = d
         msg_pub.phi = phi
-        #msg_pub.in_lane = ...
+        msg_pub.curvature = 1 / radius
 
 
         # publish lane pose msg
@@ -88,10 +91,49 @@ class TrajectoryControl(DTROS):
         closest_pt = np.array([self.x_track[idx_min_dist], self.y_track[idx_min_dist]])
         closest_angle = self.tangent_angle[idx_min_dist]
 
-        d = LA.norm(closest_pt)*side
-        phi = abs(closest_angle - yaw)*side
+        print("closest pt = " + str(closest_pt) + "; ang phi = " + str(closest_angle))
+
+        d = min_dist * side
+        phi = abs(closest_angle - yaw) * side
 
         return d, phi
+
+
+    def closest_track_point(self, x, y):
+        '''
+        Function finds the closest distance from the current robot position to the optimal trajectory and the index of
+        the x_ or y_coordinates which corresponds to the closest distance
+        :param x: current duckiebot position x in stopline coordinate frame
+        :param y: current duckiebot position y in stopline coordinate frame
+        :return: minimal distance and its index
+        '''
+        xdist = np.reshape(self.x_track, (-1, 1)) - x
+        ydist = np.reshape(self.y_track, (-1, 1)) - y
+        # print("xdist = " + str(xdist))
+        # print("ydist = " + str(ydist))
+        dist = np.hstack((xdist, ydist))
+        distances = LA.norm(dist, axis=1)
+        # print("LA.norm = " + str(distances))
+        idx_min_dist = np.argmin(distances)
+        min_dist = np.min(distances)
+        # TODO: more efficient search, e.g. first rough search, then binary search
+
+        return idx_min_dist, min_dist
+
+
+    def track_side(self, pt1, pt2, pt3):
+        '''
+        Function determines if the current car position is on the left or right side of the optimal trajectory
+        :param pt1: first point of optimal trajectory (x,y)
+        :param pt2: second point of optimal trajectory (x,y)
+        :param pt3: current car position (x,y)
+        :return a: -1 if car is on the left of the track, +1 if the car is on the right side of the track
+        '''
+        if (pt2[0] - pt1[0])*(pt3[1] - pt1[1]) - (pt2[1] - pt1[1])*(pt3[0] - pt1[0]) > 0:
+            a = -1
+        else:
+            a = 1
+        return a
 
 
     def run_pid(self, msg):
@@ -127,43 +169,6 @@ class TrajectoryControl(DTROS):
         torque_right = fcn(u_torque, u_steer)
 
         return torque_left, torque_right
-
-
-
-
-    def closest_track_point(self, x, y):
-        '''
-        Function finds the closest distance from the current robot position to the optimal trajectory and the index of
-        the x_ or y_coordinates which corresponds to the closest distance
-        :param x: current duckiebot position x in stopline coordinate frame
-        :param y: current duckiebot position y in stopline coordinate frame
-        :return: minimal distance and its index
-        '''
-        xdist = np.reshape(self.x_track, (-1, 1)) - x
-        ydist = np.reshape(self.y_track, (-1, 1)) - y
-        dist = np.hstack((xdist, ydist))
-        distances = LA.norm(dist, axis=1)
-        idx_min_dist = np.argmin(distances)
-        min_dist = np.min(distances)
-        # TODO: more efficient search, e.g. first rough search, then binary search
-
-        return idx_min_dist, min_dist
-
-
-    def track_side(self, pt1, pt2, pt3):
-        '''
-        Function determines if the current car position is on the left or right side of the optimal trajectory
-        :param pt1: first point of optimal trajectory (x,y)
-        :param pt2: second point of optimal trajectory (x,y)
-        :param pt3: current car position (x,y)
-        :return a: -1 if car is on the left of the track, +1 if the car is on the right side of the track
-        '''
-        if (pt2[0] - pt1[0])*(pt3[1] - pt1[1]) - (pt2[1] - pt1[1])*(pt3[0] - pt1[0]) > 0:
-            a = -1
-        else:
-            a = 1
-        return a
-
 
 
 
