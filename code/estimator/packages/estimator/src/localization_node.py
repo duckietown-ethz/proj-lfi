@@ -19,7 +19,7 @@ from scaled_homography import ScaledHomography
 from stopline_detector import StoplineDetector
 from stopline_filter import StoplineFilter
 from image_geometry import PinholeCameraModel
-from tf.transformations import unit_vector, quaternion_from_euler
+from tf.transformations import unit_vector, quaternion_from_euler, euler_from_quaternion
 from timekeeper import TimeKeeper
 
 
@@ -131,9 +131,12 @@ class LocalizationNode(DTROS):
             else:
                 axle_pose = utils.get_pose('intersection', self.last_position, self.last_orientation)
                 if self.prev_pose_in is not None:
-                    axle_pose.x += (self.pose_in.x - self.prev_pose_in.x)
-                    axle_pose.y += (self.pose_in.y - self.prev_pose_in.y)
-                    axle_pose.theta += (self.pose_in.theta - self.prev_pose_in.theta)
+                    axle_pose.pose.position.x += (self.pose_in.x - self.prev_pose_in.x)
+                    axle_pose.pose.position.y += (self.pose_in.y - self.prev_pose_in.y)
+                    old_theta = euler_from_quaternion(quat_to_tuple(axle_pose.pose.orientation), axes='sxyz')[2]
+                    delta_theta = self.pose_in.theta - self.prev_pose_in.theta
+                    theta = prev_theta + delta_theta
+                    axle_pose.pose.orientation = unit_vector(quaternion_from_euler(0, 0, theta, axes='sxyz'))
 
             self.prev_pose_in = self.pose_in
 
