@@ -46,6 +46,9 @@ class LocalizationNode(DTROS):
         self.updateParameters()
         self.refresh_parameters()
 
+        self.pose_in = None # latest input pose (open loop)
+        self.prev_pose_in = None # input pose when the last estimate was made
+
         # Subscribers
         self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.cb_camera_info, queue_size=1)
         self.sub_reset = self.subscriber('~reset', Bool, self.cb_reset, queue_size=1)
@@ -92,6 +95,11 @@ class LocalizationNode(DTROS):
             self.log('Initialized.')
 
 
+    # The received pose will be used to compute expected stop line positions
+    def cb_pose_in(self, msg):
+        if msg.data is not None: # XXX: I believe it can't be anyway
+            self.pose_in = msg.data
+
     def cb_reset(self, msg):
         do_reset = msg.data
         if do_reset:
@@ -122,6 +130,12 @@ class LocalizationNode(DTROS):
                 axle_pose = utils.get_pose('intersection', start_position, start_orientation)
             else:
                 axle_pose = utils.get_pose('intersection', self.last_position, self.last_orientation)
+                if self.prev_pose_in is not None:
+                    axle_pose.x += (self.pose_in.x - self.prev_pose_in.x)
+                    axle_pose.y += (self.pose_in.y - self.prev_pose_in.y)
+                    axle_pose.theta += (self.pose_in.theta - self.prev_pose_in.theta)
+
+            self.prev_pose_in = self.pose_in
 
             stopline_poses_predicted = self.model.get_stopline_centers_pixel_prediction(axle_pose)
             self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
