@@ -8,6 +8,7 @@ import yaml
 
 from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, LanePose
+from geometry_msgs.msg import PoseStamped
 from cv_bridge import CvBridge
 from duckietown_utils import load_map, load_camera_intrinsics, load_homography, rectify
 from collections import OrderedDict
@@ -23,11 +24,11 @@ class TrajectoryControl(DTROS):
         # Initialize the DTROS parent class
         super(TrajectoryControl, self).__init__(node_name=node_name)
 
-        x_track = self.rospy.get_param('/xCoords')
-        y_track = self.rospy.get_param('/yCoords')
-        x_rate = self.rospy.get_param('/xRate')
-        y_rate = self.rospy.get_param('/yRate')
-        tangent_angle = self.rospy.get_param('/tangentAngle')
+        self.x_track = rospy.get_param('/trajectory_following_node/xCoords')
+        self.y_track = rospy.get_param('/trajectory_following_node/yCoords')
+        self.x_rate = rospy.get_param('/trajectory_following_node/xRate')
+        self.y_rate = rospy.get_param('/trajectory_following_node/yRate')
+        self.tangent_angle = rospy.get_param('/trajectory_following_node/tangentAngle')
 
         self.pub_image_ar = rospy.Publisher("~/.../lane_pose" % (name, imageName), LanePose, queue_size=1)
 
@@ -49,17 +50,18 @@ class TrajectoryControl(DTROS):
         d, phi = self.relative_pose(msg)
 
         # convert to LanePose() message
+        print("distance: " + str(d))
+        print("angle: " + str(phi))
+        # convert to LanePose() message
         msg_pub = LanePose()
-        msg_pub.header.stamp = ...
+        #msg_pub.header.stamp = ...
         msg_pub.d = d
         msg_pub.phi = phi
-        msg_pub.in_lane = ...
-        # TODO: is it always NORMAL?
-        lanePose.status = lanePose.NORMAL
+        #msg_pub.in_lane = ...
 
 
         # publish lane pose msg
-        self.pub_image_ar.publish(msg_lane_pose)
+        self.pub_image_ar.publish(msg_pub)
 
 
     def relative_pose(self, msg):
@@ -71,18 +73,22 @@ class TrajectoryControl(DTROS):
         :return: distance d and angle phi compared to the optimal trajectory --> same as for line following
         '''
 
-        db_position = msg.pose.pose.position
-        db_orientation = msg.pose.pose.orientation
+        db_position = msg.pose.position
+        db_orientation = msg.pose.orientation
         orientation_list = [db_orientation.x, db_orientation.y, db_orientation.z, db_orientation.w]
         (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
 
         idx_min_dist, min_dist = self.closest_track_point(db_position.x, db_position.y)
+
+        track_pt1 = np.array([self.x_track[idx_min_dist], self.y_track[idx_min_dist]])
+        track_pt2 = np.array([self.x_track[idx_min_dist + 1], self.y_track[idx_min_dist + 1]])
+        car_pt = np.array([db_position.x, db_position.y])
         side = self.track_side(track_pt1, track_pt2, car_pt)
 
-        closest_pt = np.array([x_track[idx_min_dist], y_track[idx_min_dist]])
-        closest_angle = tangent_angle[idx_min_dist]
+        closest_pt = np.array([self.x_track[idx_min_dist], self.y_track[idx_min_dist]])
+        closest_angle = self.tangent_angle[idx_min_dist]
 
-        d = np.norm(closest_pt)*side
+        d = LA.norm(closest_pt)*side
         phi = abs(closest_angle - yaw)*side
 
         return d, phi
@@ -103,8 +109,8 @@ class TrajectoryControl(DTROS):
 
         idx_min_dist, min_dist = self.closest_track_point(look_ahead_x, look_ahead_y)
 
-        track_pt1 = np.array([x_track[idx_min_dist], y_track[idx_min_dist]])
-        track_pt2 = np.array([x_track[idx_min_dist + 1], y_track[idx_min_dist + 1]])
+        track_pt1 = np.array([self.x_track[idx_min_dist], self.y_track[idx_min_dist]])
+        track_pt2 = np.array([self.x_track[idx_min_dist + 1], self.y_track[idx_min_dist + 1]])
         car_pt = np.array([look_ahead_x, look_ahead_y])
         side = self.track_side(track_pt1, track_pt2, car_pt)
 
@@ -133,8 +139,8 @@ class TrajectoryControl(DTROS):
         :param y: current duckiebot position y in stopline coordinate frame
         :return: minimal distance and its index
         '''
-        xdist = np.arrange(x_track, (-1, 1)) - x
-        ydist = np.arrange(y_track, (-1, 1)) - y
+        xdist = np.reshape(self.x_track, (-1, 1)) - x
+        ydist = np.reshape(self.y_track, (-1, 1)) - y
         dist = np.hstack((xdist, ydist))
         distances = LA.norm(dist, axis=1)
         idx_min_dist = np.argmin(distances)
