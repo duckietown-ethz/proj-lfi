@@ -97,8 +97,8 @@ class LocalizationNode(DTROS):
 
     # The received pose will be used to compute expected stop line positions
     def cb_pose_in(self, msg):
-        if msg.data is not None: # XXX: I believe it can't be anyway
-            self.pose_in = msg.data
+        if msg is not None: # XXX: I believe it can't be anyway
+            self.pose_in = msg
 
     def cb_reset(self, msg):
         do_reset = msg.data
