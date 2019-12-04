@@ -118,11 +118,11 @@ class LocalizationNode(DTROS):
                 # Set initial position
                 start_orientation = unit_vector(quaternion_from_euler(0, 0, np.pi/2.0, axes='sxyz'))
                 start_position = [rospy.get_param('~x'), rospy.get_param('~y'), rospy.get_param('~z')]
-                axle_pose = utils.get_pose('intersection', start_position, start_orientation)
+                axle_pose = utils.pose(start_position, start_orientation)
             else:
-                axle_pose = utils.get_pose('intersection', self.last_position, self.last_orientation)
+                axle_pose = utils.pose(self.last_position, self.last_orientation)
 
-            stopline_poses_predicted = self.model.get_stopline_centers_pixel_prediction(axle_pose)
+            stopline_poses_predicted = self.model.get_stopline_poses_reference(axle_pose)
             self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
             tk.completed('predict poses')
 

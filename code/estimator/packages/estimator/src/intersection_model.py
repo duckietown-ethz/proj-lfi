@@ -25,52 +25,54 @@ class Intersection4wayModel():
 
         self.stopline_poses = []
 
-        orientation = unit_vector(quaternion_from_euler(0, 0, 0, axes='sxyz'))
-        self.stopline_poses.append(utils.get_pose('intersection', [0.0, 0.0, 0.0], orientation))
+        self.tf1 = TransformerROS()
+        self.tf2 = TransformerROS()
 
-        orientation = unit_vector(quaternion_from_euler(0, 0, -np.pi/2.0, axes='sxyz'))
-        self.stopline_poses.append(utils.get_pose('intersection', [-(q/2.0+s+q+p/2.0), p/2.0+q/2.0, 0.0], orientation))
+        def add_stopline_transform(idx, position, angle):
+            orientation = unit_vector(quaternion_from_euler(0, 0, angle, axes='sxyz'))
+            pose = utils.pose(position, orientation)
 
-        orientation = unit_vector(quaternion_from_euler(0, 0, -np.pi, axes='sxyz'))
-        self.stopline_poses.append(utils.get_pose('intersection', [-(q/2.0+s+q/2.0), p/2.0+2*q+s+p/2.0, 0.0], orientation))
+            # Add transform for reference stopline poses
+            child_frame = self.stopline_frame(idx)
+            parent_frame = 'intersection'
+            transform = utils.transform_from_pose('intersection', child_frame, pose)
+            self.tf1.setTransform(transform)
 
-        orientation = unit_vector(quaternion_from_euler(0, 0, -3.0*np.pi/2.0, axes='sxyz'))
-        self.stopline_poses.append(utils.get_pose('intersection', [q/2.0+p/2.0, p/2.0+q+s+q/2.0, 0.0], orientation))
+            # Add transform for measured stopline poses
+            child_frame = self.intersection_frame(idx)
+            parent_frame = self.stopline_frame(idx)
+            inverted_pose = utils.invert_pose(utils.pose(position, orientation))
+            transform = utils.transform_from_pose(parent_frame, child_frame, inverted_pose)
+            self.tf2.setTransform(transform)
+
+        add_stopline_transform(0, [0.0, 0.0, 0.0], 0)
+        add_stopline_transform(1, [-(q/2.0+s+q+p/2.0), p/2.0+q/2.0, 0.0], -np.pi/2.0)
+        add_stopline_transform(2, [-(q/2.0+s+q/2.0), p/2.0+2*q+s+p/2.0, 0.0], -np.pi)
+        add_stopline_transform(3, [q/2.0+p/2.0, p/2.0+q+s+q/2.0, 0.0], -3.0*np.pi/2.0)
 
 
-        # TODO This part can be written much more nicely
-        intersection_poses = [utils.invert_pose(p.pose) for p in self.stopline_poses]
-        self.intersection_poses = [utils.stamp_pose('stopline_{}'.format(i), p) for i, p in enumerate(intersection_poses)]
+    def stopline_frame(self, idx):
+        return 'stopline_' + str(idx)
 
-        self.transformer = TransformerROS()
 
-        for i, intersection_pose in enumerate(self.intersection_poses):
-            position, orientation = utils.pose_to_tuple(intersection_pose.pose)
-            transform = utils.get_transform(intersection_pose.header.frame_id, 'intersection_{}'.format(i), position, orientation)
-            self.transformer.setTransform(transform)
+    def intersection_frame(self, idx):
+        return 'intersection_' + str(idx)
 
 
     # axle_pose needs to be in intersection coordinates
     def get_stopline_poses_reference(self, axle_pose):
-        position, orientation = utils.pose_to_tuple(axle_pose.pose)
-        transform = utils.get_transform('intersection', 'axle', position, orientation)
-        self.transformer.setTransform(transform)
+        transform = utils.transform_from_pose('intersection', 'axle', axle_pose)
+        self.tf1.setTransform(transform)
 
-        stopline_poses_predicted = []
+        stopline_poses = [self.tf1.transformPose('axle', utils.origin_pose(self.stopline_frame(i))).pose for i in range(4)]
 
-        for i in range(len(self.stopline_poses)):
-            prediction_axle_frame = self.transformer.transformPose('axle', self.stopline_poses[i])
-            stopline_poses_predicted.append(prediction_axle_frame.pose)
-
-        return stopline_poses_predicted
+        return stopline_poses
 
 
-    def get_axle_pose_from_stopline_pose(self, stopline_pose, index):
-        position, orientation = utils.pose_to_tuple(stopline_pose)
-        transform = utils.get_transform('axle', 'stopline_{}'.format(index), position, orientation)
-        self.transformer.setTransform(transform)
+    def get_axle_pose_from_stopline_pose(self, stopline_pose, idx):
+        transform = utils.transform_from_pose('axle', self.stopline_frame(idx), stopline_pose)
+        self.tf2.setTransform(transform)
 
-        axle_origin = utils.get_pose('axle', [0.0,0.0,0.0], [0.0,0.0,0.0,1])
-        # TODO Can this be done with only one intersection frame?
-        axle_pose = self.transformer.transformPose('intersection_{}'.format(index), axle_origin)
+        axle_origin = utils.origin_pose('axle')
+        axle_pose = self.tf2.transformPose(self.intersection_frame(idx), axle_origin)
         return axle_pose
