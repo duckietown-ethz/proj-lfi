@@ -133,7 +133,7 @@ class LocalizationNode(DTROS):
                 if self.prev_pose_in is not None:
                     axle_pose.pose.position.x += (self.pose_in.x - self.prev_pose_in.x)
                     axle_pose.pose.position.y += (self.pose_in.y - self.prev_pose_in.y)
-                    old_theta = euler_from_quaternion(quat_to_tuple(axle_pose.pose.orientation), axes='sxyz')[2]
+                    prev_theta = euler_from_quaternion(utils.quat_to_tuple(axle_pose.pose.orientation), axes='sxyz')[2]
                     delta_theta = self.pose_in.theta - self.prev_pose_in.theta
                     theta = prev_theta + delta_theta
                     axle_pose.pose.orientation = unit_vector(quaternion_from_euler(0, 0, theta, axes='sxyz'))
