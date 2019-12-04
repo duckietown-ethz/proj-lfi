@@ -18,10 +18,10 @@ from anti_instagram import AntiInstagram
 class PreprocessorNode(DTROS):
     """
     Tasks of this node:
-    - (done) Set parameters of camera_node (resolution)
-    - (done) Cutting off horizon
-    - (done) Improve image contrast
-    - (done) Image rectification
+    - Set parameters of camera_node (resolution)
+    - Cutting off horizon
+    - Improve image contrast
+    - Image rectification
     """
 
     def __init__(self, node_name):

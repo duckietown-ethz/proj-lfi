@@ -2,7 +2,7 @@ import numpy as np
 import rospy
 from duckietown_utils.jpg import bgr_from_jpg
 from cv_bridge import CvBridge, CvBridgeError
-from geometry_msgs.msg import Quaternion, PoseStamped, TransformStamped
+from geometry_msgs.msg import Quaternion, PoseStamped, TransformStamped, Pose
 from tf.transformations import quaternion_inverse, quaternion_multiply
 from tf import TransformerROS
 
@@ -62,20 +62,28 @@ def quat_distance(q0, q1):
     else:
         return d_plus
 
-# Change this to get_pose_stamped and add another function get_pose
-def get_pose(frame, position, orientation, stamp=rospy.Time(0)):
+
+def pose(position, orientation):
+    p = Pose()
+
+    p.position.x = position[0]
+    p.position.y = position[1]
+    p.position.z = position[2]
+
+    p.orientation.x = orientation[0]
+    p.orientation.y = orientation[1]
+    p.orientation.z = orientation[2]
+    p.orientation.w = orientation[3]
+
+    return p
+
+
+def pose_stamped(frame, position, orientation, stamp=rospy.Time(0)):
     p = PoseStamped()
     p.header.stamp = stamp
     p.header.frame_id = frame
 
-    p.pose.position.x = position[0]
-    p.pose.position.y = position[1]
-    p.pose.position.z = position[2]
-
-    p.pose.orientation.x = orientation[0]
-    p.pose.orientation.y = orientation[1]
-    p.pose.orientation.z = orientation[2]
-    p.pose.orientation.w = orientation[3]
+    p.pose = pose(position, orientation)
 
     return p
 
@@ -90,29 +98,27 @@ def stamp_pose(frame, pose, stamp=rospy.Time(0)):
     return p
 
 
-def get_transform(frame_parent, frame_child, position, orientation, stamp=rospy.Time(0)):
+def origin_pose(frame, stamp=rospy.Time(0)):
+    return pose_stamped(frame, [0.0,0.0,0.0], [0.0,0.0,0.0,1])
+
+
+def transform_from_pose(frame_parent, frame_child, pose, stamp=rospy.Time(0)):
     t = TransformStamped()
     t.header.frame_id = frame_parent
     t.header.stamp = stamp
     t.child_frame_id = frame_child
-    t.transform.translation.x = position[0]
-    t.transform.translation.y = position[1]
-    t.transform.translation.z = position[2]
 
-    t.transform.rotation.x = orientation[0]
-    t.transform.rotation.y = orientation[1]
-    t.transform.rotation.z = orientation[2]
-    t.transform.rotation.w = orientation[3]
+    t.transform.translation = pose.position
+    t.transform.rotation = pose.orientation
 
     return t
 
-def invert_pose(pose):
-    position, orientation = pose_to_tuple(pose)
 
+def invert_pose(pose):
     transformer = TransformerROS()
-    transform = get_transform('frame1', 'frame2', position, orientation)
+    transform = transform_from_pose('frame1', 'frame2', pose)
     transformer.setTransform(transform)
-    frame1_origin_frame1 = get_pose('frame1', [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0])
+    frame1_origin_frame1 = pose_stamped('frame1', [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0])
     frame1_origin_frame2 = transformer.transformPose('frame2', frame1_origin_frame1)
 
     return frame1_origin_frame2.pose
@@ -130,7 +136,7 @@ def average_quaternion(quaternions, weights):
 
     Q = weighted_quats # shape: 4xlen(quaternions)
     Q_QT = np.dot(Q, Q.T)
-    eig_vals, eig_vecs = np.linalg.eig(Q_QT)
+    eig_vals, eig_vecs = np.linalg.eigh(Q_QT) # eigh can be used since Q_QT is real-symmetric
 
     # Get eigenvector with largest eigenvalue
     idx_max = np.argmax(eig_vals)

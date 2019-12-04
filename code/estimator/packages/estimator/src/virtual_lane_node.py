@@ -16,33 +16,42 @@ from numpy import linalg as LA
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 
-class TrajectoryControl(DTROS):
-
+class VirtualLaneNode(DTROS):
 
     def __init__(self, node_name):
-
         # Initialize the DTROS parent class
-        super(TrajectoryControl, self).__init__(node_name=node_name)
+        super(VirtualLaneNode, self).__init__(node_name=node_name)
+        self.veh_name = rospy.get_namespace().strip("/")
 
-        self.x_track = rospy.get_param('/trajectory_following_node/xCoords')
-        self.y_track = rospy.get_param('/trajectory_following_node/yCoords')
-        self.x_rate = rospy.get_param('/trajectory_following_node/xRate')
-        self.y_rate = rospy.get_param('/trajectory_following_node/yRate')
-        self.tangent_angle = rospy.get_param('/trajectory_following_node/tangentAngle')
+        # Initialize parameters
+        #self.parameters['~verbose'] = None
+        self.parameters['~xCoords'] = None
+        self.parameters['~yCoords'] = None
+        self.parameters['~xRate'] = None
+        self.parameters['~yRate'] = None
+        self.parameters['~tangentAngle'] = None
+        self.updateParameters()
+        self.refresh_parameters()
 
-        self.pub_image_ar = rospy.Publisher("~/.../lane_pose" % (name, imageName), LanePose, queue_size=1)
+        # Publishers
+        self.pub_lanepose = rospy.Publisher("~lane_pose", LanePose, queue_size=1)
 
-        self.sub_cam_img = rospy.Subscriber("~/.../pose_stamped" % name, PoseStamped, self.callback, queue_size=1)
+        # Subscribers
+        self.sub_intpose = rospy.Subscriber("~intersection_pose", PoseStamped, self.cb_intpose, queue_size=1)
+
         self.log("Initialized")
 
 
-    def callback(self, msg):
+    def cb_intpose(self, msg):
         '''
-        Callback Function, that subscribes to the incoming LanePose (position and orientation of duckiebot) message and
+        cb_intpose Function, that subscribes to the incoming LanePose (position and orientation of duckiebot) message and
         publishes the PoseStamped message with the entries d and phi, that can be used for the controller
         :param msg: LanePose ros message
         :return: None
         '''
+
+        self.log('Received intersection pose!')
+
         # compte motor commands for lefta nd right motor with a simple line following pid controller
         # --> this function is INCOMPLETE!
         # u_l, u_r = self.run_pid(msg)
@@ -51,7 +60,6 @@ class TrajectoryControl(DTROS):
         d, phi = self.relative_pose(msg)
 
         # convert to LanePose() message
-        d, phi = self.relative_pose(message_pose)
         radius = self.y_track[-1]
         print("distance: " + str(d))
         print("angle: " + str(phi))
@@ -60,11 +68,10 @@ class TrajectoryControl(DTROS):
         msg_pub.header.stamp = msg.header.stamp
         msg_pub.d = d
         msg_pub.phi = phi
-        msg_pub.curvature = 1 / radius
-
+        #msg_pub.curvature = 1 / radius
 
         # publish lane pose msg
-        self.pub_image_ar.publish(msg_pub)
+        self.pub_lanepose.publish(msg_pub)
 
 
     def relative_pose(self, msg):
@@ -171,12 +178,18 @@ class TrajectoryControl(DTROS):
         return torque_left, torque_right
 
 
+    def refresh_parameters(self):
+        self.x_track = self.parameters['~xCoords']
+        self.y_track = self.parameters['~yCoords']
+        self.x_rate = self.parameters['~xRate']
+        self.y_rate = self.parameters['~yRate']
+        self.tangent_angle = self.parameters['~tangentAngle']
+
+
 
 
 if __name__ == '__main__':
     # Initialize the node
-    print('Starting trajectory controller node ... ---------------------------------------------------------------------')
-    camera_node = TrajectoryControl(node_name='trajectory')
-    print('... finishing trajectory controller node ---------------------------------------------------------------------')
+    camera_node = VirtualLaneNode(node_name='trajectory')
     # Keep it spinning to keep the node alive
     rospy.spin()

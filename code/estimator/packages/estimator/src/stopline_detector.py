@@ -130,7 +130,7 @@ class StoplineDetector():
         # TODO Is unit_vector really necessary here?
         orientation = unit_vector(quaternion_from_euler(0, 0, alpha, axes='sxyz'))
 
-        pose = utils.get_pose('axle', position, orientation).pose
+        pose = utils.pose(position, orientation)
         return pose
 
 

@@ -1,5 +1,5 @@
 verbose: true
 image_size:
-    width: 320
-    height: 240
+    width: 256
+    height: 192
 top_cutoff_percent: 0
