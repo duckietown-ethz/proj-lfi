@@ -1,0 +1,36 @@
+points:
+    S0L: [intersection, [0,     0.12, 0]]
+    S0R: [intersection, [0,     0.32, 0]]
+    S1L: [intersection, [-0.22, 0.32, 0]]
+    S1R: [intersection, [-0.42, 0.32, 0]]
+    S2L: [intersection, [-0.42, 0.1, 0]]
+    S2R: [intersection, [-0.42,-0.1, 0]]
+    S3L: [intersection, [-0.20,-0.1, 0]]
+    S3R: [intersection, [0,    -0.1, 0]]
+    
+    O0L: [intersection, [0.04,  0.12, 0]]
+    O0R: [intersection, [0.04,  0.32, 0]]
+    O1L: [intersection, [-0.22, 0.36, 0]]
+    O1R: [intersection, [-0.42, 0.36, 0]]
+    O2L: [intersection, [-0.46, 0.1, 0]]
+    O2R: [intersection, [-0.46,-0.1, 0]]
+    O3L: [intersection, [-0.20,-0.14, 0]]
+    O3R: [intersection, [0,    -0.14, 0]]
+    
+segments:
+- points: [S0L, S0R]
+  color: red
+- points: [S1L, S1R]
+  color: red
+- points: [S2L, S2R]
+  color: red
+- points: [S3L, S3R]
+  color: red
+- points: [O0L, O0R]
+  color: red
+- points: [O1L, O1R]
+  color: red
+- points: [O2L, O2R]
+  color: red
+- points: [O3L, O3R]
+  color: red

@@ -1,0 +1,26 @@
+points:
+     p1: [axle, [0.15, 0.2794, 0]]
+     q1: [axle, [0.6096, 0.2794, 0]]
+     p2: [axle, [0.15, 0.2286, 0]]
+     q2: [axle, [0.6096, 0.2286, 0]]
+     p3: [axle, [0.15, 0.0127, 0]]
+     q3: [axle, [0.6096, 0.0127, 0]]
+     p4: [axle, [0.15, -0.0127, 0]]
+     q4: [axle, [0.6096, -0.0127, 0]]
+     p5: [axle, [0.15, -0.2286, 0]]
+     q5: [axle, [0.6096, -0.2286, 0]]
+     p6: [axle, [0.15, -0.2794, 0]]
+     q6: [axle, [0.6096, -0.2794, 0]]
+segments:
+ - points: [p1, q1]
+   color: white
+ - points: [p2, q2]
+   color: white
+ - points: [p3, q3]
+   color: yellow
+ - points: [p4, q4]
+   color: yellow
+ - points: [p5, q5]
+   color: white
+ - points: [p6, q6]
+   color: white

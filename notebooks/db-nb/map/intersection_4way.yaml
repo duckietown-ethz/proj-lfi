@@ -1,0 +1,98 @@
+points:
+    NL1: [axle, [0.247, 0.295, 0]]
+    NL2: [axle, [0.347, 0.301, 0]]
+    NL3: [axle, [0.218, 0.256, 0]]
+    NL4: [axle, [0.363, 0.251, 0]]
+    NL5: [axle, [0.400, 0.287, 0]]
+    NL6: [axle, [0.409, 0.513,   0]]
+    NL7: [axle, [0.360, 0.314, 0]]
+    NL8: [axle, [0.366, 0.456, 0]]
+    NC1: [axle, [0.372, 0.007, 0]]
+    NC2: [axle, [0.145, 0.008, 0]]
+    NC3: [axle, [0.374, -0.0216, 0]]
+    NC4: [axle, [0.146, -0.0180, 0]]
+    NR1: [axle, [0.209, -0.234, 0]]
+    NR2: [axle, [0.349, -0.237, 0]]
+    NR3: [axle, [0.242, -0.276, 0]]
+    NR4: [axle, [0.319, -0.274, 0]]
+    NR5: [axle, [0.402, -0.283, 0]]
+    NR6: [axle, [0.401, -0.479, 0]]
+    NR7: [axle, [0.352,  -0.415, 0]]
+    NR8: [axle, [0.352, -0.303, 0]]
+    CL1: [axle, [0.586, 0.261, 0]]
+    CL2: [axle, [0.595, 0.632, 0]]
+    CL3: [axle, [0.618, 0.251, 0]]
+    CL4: [axle, [0.637, 0.662, 0]]
+    CR1: [axle, [0.565, -0.253, 0]]
+    CR2: [axle, [0.567, -0.607, 0]]
+    CR3: [axle, [0.610, -0.262, 0]]
+    CR4: [axle, [0.611, -0.641, 0]]
+    FL1: [axle, [0.781, 0.718, 0]]
+    FL2: [axle, [0.763, 0.253, 0]]
+    FL3: [axle, [0.863, 0.192, 0]]
+    FL4: [axle, [1.185, 0.172, 0]]
+    FL5: [axle, [0.842, 0.718, 0]]
+    FL6: [axle, [0.875, 0.271,   0]]
+    FL7: [axle, [0.879, 0.234, 0]]
+    FL8: [axle, [1.180, 0.209, 0]]
+    FC1: [axle, [0.823, 0.0162, 0]]
+    FC2: [axle, [1.172, 0.00117, 0]]
+    FC3: [axle, [0.845, -0.0100, 0]]
+    FC4: [axle, [1.215, -0.0181, 0]]
+    FR1: [axle, [0.764, -0.695, 0]]
+    FR2: [axle, [0.768, -0.263, 0]]
+    FR3: [axle, [0.810, -0.202, 0]]
+    FR4: [axle, [1.203, -0.196, 0]]
+    FR5: [axle, [0.795, -0.702, 0]]
+    FR6: [axle, [0.803, -0.291, 0]]
+    FR7: [axle, [0.832, -0.240, 0]]
+    FR8: [axle, [1.210, -0.245, 0]]
+segments:
+- points: [NL1, NL2]
+  color: white
+- points: [NL3, NL4]
+  color: white
+- points: [NL5, NL6]
+  color: white
+- points: [NL7, NL8]
+  color: white
+- points: [NC1, NC2]
+  color: yellow
+- points: [NC3, NC4]
+  color: yellow
+- points: [NR1, NR2]
+  color: white
+- points: [NR3, NR4]
+  color: white
+- points: [NR5, NR6]
+  color: white
+- points: [NR7, NR8]
+  color: white
+- points: [CL1, CL2]
+  color: yellow
+- points: [CL3, CL4]
+  color: yellow
+- points: [CR1, CR2]
+  color: yellow
+- points: [CR3, CR4]
+  color: yellow
+- points: [FL1, FL2]
+  color: white
+- points: [FL3, FL4]
+  color: white
+- points: [FL5, FL6]
+  color: white
+- points: [FL7, FL8]
+  color: white
+- points: [FC1, FC2]
+  color: yellow
+- points: [FC3, FC4]
+  color: yellow
+- points: [FR1, FR2]
+  color: white
+- points: [FR3, FR4]
+  color: white
+- points: [FR5, FR6]
+  color: white
+- points: [FR7, FR8]
+  color: white
