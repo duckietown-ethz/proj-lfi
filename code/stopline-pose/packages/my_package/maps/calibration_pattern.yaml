@@ -1,0 +1,14 @@
+points:
+    TL: [axle, [0.315, 0.093, 0]]
+    TR: [axle, [0.315, -0.093, 0]]
+    BR: [axle, [0.191, -0.093, 0]]
+    BL: [axle, [0.191, 0.093, 0]]
+segments:
+- points: [TL, TR]
+  color: red
+- points: [TR, BR]
+  color: green
+- points: [BR, BL]
+  color: blue
+- points: [BL, TL]
+  color: yellow

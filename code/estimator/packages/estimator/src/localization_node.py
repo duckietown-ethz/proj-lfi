@@ -6,15 +6,21 @@ import rospy
 import rospkg
 
 from duckietown import DTROS
-from sensor_msgs.msg import CompressedImage
-from geometry_msgs.msg import Point, Quaternion, Pose
+from sensor_msgs.msg import CompressedImage, CameraInfo
+from geometry_msgs.msg import Point, Quaternion, PoseStamped, PoseArray
 from std_msgs.msg import Bool
 from duckietown_msgs.msg import Pose2DStamped
 from cv_bridge import CvBridge, CvBridgeError
 
 import utils
-from feature_tracker import FeatureTracker
 from config_loader import get_camera_info_for_robot, get_homography_for_robot
+from intersection_model import Intersection4wayModel
+from scaled_homography import ScaledHomography
+from stopline_detector import StoplineDetector
+from stopline_filter import StoplineFilter
+from image_geometry import PinholeCameraModel
+from tf.transformations import unit_vector, quaternion_from_euler
+from timekeeper import TimeKeeper
 
 
 class LocalizationNode(DTROS):
@@ -25,63 +31,88 @@ class LocalizationNode(DTROS):
         self.veh_name = rospy.get_namespace().strip("/")
 
         # Initialize parameters
+        rospy.set_param('~x', 0.0)
+        rospy.set_param('~y', -0.20)
+        rospy.set_param('~z', 0.0)
+
+        rospy.set_param('~eps', 0.5)
+        self.parameters['~eps'] = None
+        rospy.set_param('~min_samples', 4)
+        self.parameters['~min_samples'] = None
+
         self.parameters['~verbose'] = None
+        self.parameters['/{}/preprocessor_node/image_size'.format(self.veh_name)] = None
+        self.parameters['/{}/preprocessor_node/top_cutoff_percent'.format(self.veh_name)] = None
         self.updateParameters()
         self.refresh_parameters()
 
-        self.pose_in = None # latest input pose (open loop)
-        self.prev_pose_in = None # input pose when the last estimate was made
-
         # Subscribers
-        buffer_size = 294912 # TODO Set this dynamically based on the image size.
-        self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
+        self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.cb_camera_info, queue_size=1)
         self.sub_reset = self.subscriber('~reset', Bool, self.cb_reset, queue_size=1)
         self.sub_pose_in = self.subscriber('~open_loop_pose_estimate', Pose2DStamped, self.cb_pose_in, queue_size=1)
 
         # Publishers
-        self.pub_keypoints = self.publisher('~verbose/keypoints/compressed', CompressedImage, queue_size=1)
-        self.pub_intersection = self.publisher('~verbose/intersection/compressed', CompressedImage, queue_size=1)
+        self.pub_clustering = self.publisher('~verbose/clustering/compressed', CompressedImage, queue_size=1)
+        self.pub_red_filter = self.publisher('~verbose/red_filter/compressed', CompressedImage, queue_size=1)
+        self.pub_stoplines_measured = self.publisher('~stoplines_measured', PoseArray, queue_size=1)
+        self.pub_stoplines_predicted = self.publisher('~stoplines_predicted', PoseArray, queue_size=1)
+        self.pub_pose_estimates = self.publisher('~pose_estimates', PoseArray, queue_size=1)
+        self.pub_best_pose_estimate = self.publisher('~best_pose_estimate', PoseStamped, queue_size=1)
 
         self.bridge = CvBridge()
-        self.feature_tracker = FeatureTracker(400, 50, self.log)
 
-        self.start_position = np.matrix([640/2.0, 480/4.0]).T
-        self.start_angle = 180.0
+        self.last_position = None
+        self.last_orientation = None
 
-        self.log("Initialized")
+        self.scaled_homography = None
+
+        self.log('Waiting for camera to update its parameters.')
+
+    def cb_camera_info(self, msg):
+        if self.image_size_width == msg.width and self.image_size_height == msg.height:
+            self.log('Received camera info.', 'info')
+            self.pcm = PinholeCameraModel()
+            self.pcm.fromCameraInfo(msg)
+            homography = get_homography_for_robot(self.veh_name)
+            camera_info = get_camera_info_for_robot(self.veh_name)
+            self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
+            self.model = Intersection4wayModel(self.pcm, self.scaled_homography)
+            self.stopline_detector = StoplineDetector(self.scaled_homography, point_reduction_factor=1)
+            self.stopline_filter = StoplineFilter(min_quality=0.5, policy='weighted_avg')
+
+            # This topic subscription is only needed initially, so it can be unregistered.
+            self.sub_camera_info.unregister()
+            self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.scaled_homography.cb_camera_info, queue_size=1)
+
+            buffer_size = msg.width * msg.height * 3 * 2
+            self.log('Buffer size set to {}.'.format(buffer_size), 'info')
+            # Now the node can proceed to process images
+            self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
+
+            self.log('Initialized.')
+
 
     def cb_reset(self, msg):
         do_reset = msg.data
         if do_reset:
-            self.feature_tracker.reset()
-
-    def draw_ref_point(self, image, position, angle, length):
-        # position in [px]
-        # angle in [deg]
-
-        angle_rad = np.deg2rad(angle)
-        pt1 = (int(position[1]), int(position[0]))
-        pt2 = (int(pt1[0] + length * np.sin(angle_rad)), int(pt1[1] + length * np.cos(angle_rad)))
-
-        return cv2.arrowedLine(image, pt1, pt2, (0, 0, 255), 1)
-
-    # The received pose will be used to compute expected stop line positions
-    def cb_pose_in(self, msg):
-        if msg.data is not None: # XXX: I believe it can't be anyway
-            self.pose_in = msg.data
+            self.last_position = None
+            self.last_orientation = None
 
     def cb_image_in(self, msg):
         if not self.is_shutdown:
             # TODO Change to debug level
             self.log('Received image.', 'info')
 
+            tk = TimeKeeper(msg)
+
             if self.parametersChanged:
                 self.log('Parameters changed.', 'info')
                 self.refresh_parameters()
                 self.parametersChanged = False
 
+            tk.completed('parameter check')
             img_original = utils.read_image(msg)
-            if img_original == None:
+            if img_original is None:
                 return
 
             if self.last_position is None or self.last_orientation is None:
@@ -91,11 +122,6 @@ class LocalizationNode(DTROS):
                 axle_pose = utils.get_pose('intersection', start_position, start_orientation)
             else:
                 axle_pose = utils.get_pose('intersection', self.last_position, self.last_orientation)
-                if self.prev_pose_in is not None:
-                    axle_pose.x += (self.pose_in.x - self.prev_pose_in.x)
-                    axle_pose.y += (self.pose_in.y - self.prev_pose_in.y)
-                    axle_pose.theta += (self.pose_in.theta - self.prev_pose_in.theta)
-            self.prev_pose_in = self.pose_in
 
             stopline_poses_predicted = self.model.get_stopline_centers_pixel_prediction(axle_pose)
             self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
@@ -186,8 +212,20 @@ class LocalizationNode(DTROS):
         return image
 
 
+    def publish_pose_array(self, publisher, frame_id, poses):
+        pose_array = PoseArray()
+        pose_array.header.frame_id = frame_id
+        pose_array.header.stamp = rospy.Time.now()
+        pose_array.poses = poses
+        publisher.publish(pose_array)
+
+
     def refresh_parameters(self):
         self.verbose = self.parameters['~verbose']
+        image_size = self.parameters['/{}/preprocessor_node/image_size'.format(self.veh_name)]
+        self.image_size_height = image_size['height']
+        self.image_size_width = image_size['width']
+        self.top_cutoff_percent = self.parameters['/{}/preprocessor_node/top_cutoff_percent'.format(self.veh_name)]
 
 
     def onShutdown(self):

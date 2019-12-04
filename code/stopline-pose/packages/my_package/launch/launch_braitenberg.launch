@@ -1,0 +1,6 @@
+<launch>
+  <group ns = "wlan">
+    <node pkg="my_package" type="augmentedReality_node.py" name="augmented" output="screen">
+    </node>
+  </group>
+</launch>

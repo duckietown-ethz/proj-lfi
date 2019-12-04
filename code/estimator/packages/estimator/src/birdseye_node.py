@@ -10,6 +10,7 @@ from cv_bridge import CvBridge, CvBridgeError
 
 import utils
 from config_loader import get_camera_info_for_robot, get_homography_for_robot
+from scaled_homography import ScaledHomography
 
 
 class BirdseyeNode(DTROS):
@@ -24,7 +25,9 @@ class BirdseyeNode(DTROS):
         self.refresh_parameters()
 
         # Load camera calibration
-        self.homography = get_homography_for_robot(self.veh_name)
+        homography = get_homography_for_robot(self.veh_name)
+        camera_info = get_camera_info_for_robot(self.veh_name)
+        self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
 
         # Subscribers
         buffer_size = 294912 # TODO Set this dynamically based on the image size.
@@ -50,10 +53,10 @@ class BirdseyeNode(DTROS):
                 self.parametersChanged = False
 
             img_original = utils.read_image(msg)
-            if img_original == None:
+            if img_original is None:
                 return
 
-            img_warped = self.camera_img_to_birdseye(img_original, self.homography)
+            img_warped = self.camera_img_to_birdseye(img_original)
 
             if self.verbose:
                 utils.publish_image(self.bridge, self.pub_warped, img_warped)
@@ -67,45 +70,15 @@ class BirdseyeNode(DTROS):
 
 
     # TODO Make this function work if the horizon has been cut off.
-    # TODO Compute transformations only once
-    def camera_img_to_birdseye(self, cam_img, homography):
+    def camera_img_to_birdseye(self, cam_img):
+        # Update homography based on image size
         height, width, _ = cam_img.shape
-        px_per_m_original = 500.0
-
-        H = homography
-
-        # Scale homography to the size of the camera image, as it assumes a size of (480,640)
-        scale_x = 480.0 / height
-        scale_y = 640.0 / width
-        px_per_m_x = px_per_m_original / scale_x
-        px_per_m_y = px_per_m_original / scale_y
-        scaler_mat = np.hstack([np.ones((3,1))*scale_x, np.ones((3,1))*scale_y, np.ones((3,1))])
-        H = np.multiply(scaler_mat, H)
-
-        # Scale axle coordinates to pixels
-        scaler_mat = np.vstack([np.ones((1,3))*px_per_m_x, np.ones((1,3))*px_per_m_y, np.ones((1,3))])
-        H = np.multiply(scaler_mat, H)
-
-        # Size (in pixels) of the resulting transformed image
-        size = (height/2, width/2)
-
-        # Center the axle x-axis in the image
-        translation = np.eye(3, 3)
-        translation[0, 2] += 0.0
-        translation[1, 2] += size[1] / 2
-        H = translation.dot(H)
-        H /= H[2, 2]
+        self.scaled_homography.update_homography(height, width)
+        scaled_homography = self.scaled_homography.for_image()
 
         # Apply image transformation
-        birdseye_img = cv2.warpPerspective(cam_img, H, size)
-
-        # Rotate and transpose for correct orientation after transformation
-        (h, w) = birdseye_img.shape[:2]
-        center = (w / 2, h / 2)
-        # TODO Convert this into a 3x3 matrix and combine with H
-        rotMat = cv2.getRotationMatrix2D(center, 180, 1.0)
-        birdseye_img = cv2.warpAffine(birdseye_img, rotMat, (w, h))
-        birdseye_img = cv2.transpose(birdseye_img)
+        # TODO Test different flags on duckiebot (https://docs.opencv.org/3.1.0/da/d54/group__imgproc__transform.html#ga5bb5a1fea74ea38e1a5445ca803ff121 )
+        birdseye_img = cv2.warpPerspective(cam_img, scaled_homography, (width, height), flags=cv2.INTER_LINEAR+cv2.WARP_FILL_OUTLIERS)
 
         return birdseye_img
 
