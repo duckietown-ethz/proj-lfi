@@ -98,7 +98,7 @@ RUN_CMD_ATPOSE = docker run -it --rm --privileged --net=host --name $(IMG_NAME_A
 endif
 
 ifeq ($(LOCAL),0)
-RUN_CMD_FSM = dts duckiebot demo --demo_name proj-lfi --duckiebot_name $(DB_NAME) --package_name fsm_mod --image $(IMAGE_FSM) --debug
+RUN_CMD_FSM = dts duckiebot demo --demo_name fsm_node --duckiebot_name $(DB_NAME) --package_name fsm_mod --image $(IMAGE_FSM) --debug
 else
 RUN_CMD_FSM = docker run -it --rm --privileged --net=host --name $(IMG_NAME_FSM) \
 		-v "$(DATA_DIR)":/data \
