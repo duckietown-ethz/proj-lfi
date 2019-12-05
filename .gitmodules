@@ -4,3 +4,6 @@
 [submodule "infrastructure/duckiebot-interface"]
 	path = code/duckiebot-interface
 	url = https://github.com/leopoldsedev/proj-lfi-duckiebot-interface.git
+[submodule "code/car-interface"]
+	path = code/car-interface
+	url = https://github.com/leopoldsedev/proj-lfi-car-interface.git
