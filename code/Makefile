@@ -1,6 +1,6 @@
 # Set this to 0 to build/run on the duckiebot and to 1 to build/run locally
-LOCAL=0
-ACCESSIBLE_LAUNCHFILES=1
+LOCAL=1
+ACCESSIBLE_LAUNCHFILES=0
 DB_NAME = DuckyMcDuckface
 DB_NAME_LOCAL = laptop
 DB_IP= # if not set makefile will ping the hostname to get the IP
@@ -20,6 +20,8 @@ IMG_NAME_FSM = proj-lfi-fsm
 IMAGE_FSM = $(IMG_NAME_FSM):$(TAG)
 IMG_NAME_EST = proj-lfi-estimator
 IMAGE_EST = $(IMG_NAME_EST):$(TAG)
+IMG_NAME_CARINT = proj-lfi-car-interface
+IMAGE_CARINT = $(IMG_NAME_CARINT):$(TAG)
 
 ifeq ($(LOCAL),0)
 $(info Building/running on duckiebot)
@@ -121,6 +123,18 @@ RUN_CMD_EST = docker run -it --rm --privileged --net=host --name $(IMG_NAME_EST)
 		roslaunch estimator node.launch veh:=$(DB_NAME_LOCAL)
 endif
 
+ifeq ($(LOCAL),0)
+RUN_CMD_CARINT = dts duckiebot demo --demo_name all --duckiebot_name $(DB_NAME) --package_name car_interface --image $(IMAGE_CARINT) --debug
+else
+RUN_CMD_CARINT = docker run -it --rm --privileged --net=host --name $(IMG_NAME_CARINT) \
+		-v "$(DATA_DIR)":/data \
+		-v "$(LAUNCHFILE_DIR)":/launchfiles \
+		--env-file local.env \
+		-e VEHICLE_NAME=$(DB_NAME_LOCAL) \
+		$(IMAGE_CARINT) \
+		roslaunch car_interface all.launch veh:=$(DB_NAME_LOCAL)
+endif
+
 .PHONY: core
 core:
 	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t $(IMAGE_CORE) "$(CURDIR)/$@"
@@ -139,6 +153,10 @@ fsm: core
 
 .PHONY: estimator
 estimator: core
+	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t proj-lfi-$@:$(TAG) "$(CURDIR)/$@"
+
+.PHONY: car-interface
+car-interface: core
 	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t proj-lfi-$@:$(TAG) "$(CURDIR)/$@"
 
 .PHONY: run_core
@@ -160,6 +178,10 @@ run_fsm:
 .PHONY: run_est
 run_est:
 	$(RUN_CMD_EST)
+
+.PHONY: run_carint
+run_carint:
+	$(RUN_CMD_CARINT)
 
 
 .PHONY: all
