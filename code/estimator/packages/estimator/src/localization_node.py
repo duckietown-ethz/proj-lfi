@@ -129,16 +129,14 @@ class LocalizationNode(DTROS):
                 start_position = [rospy.get_param('~x'), rospy.get_param('~y'), rospy.get_param('~z')]
                 axle_pose = utils.pose(start_position, start_orientation)
             else:
-                axle_pose = utils.pose('intersection', self.last_position, self.last_orientation)
+                axle_pose = utils.pose(self.last_position, self.last_orientation)
                 if self.prev_pose_in is not None:
-                    axle_pose.pose.position.x += (self.pose_in.x - self.prev_pose_in.x)
-                    axle_pose.pose.position.y += (self.pose_in.y - self.prev_pose_in.y)
-                    prev_theta = euler_from_quaternion(utils.quat_to_tuple(axle_pose.pose.orientation), axes='sxyz')[2]
+                    axle_pose.position.x += (self.pose_in.x - self.prev_pose_in.x)
+                    axle_pose.position.y += (self.pose_in.y - self.prev_pose_in.y)
+                    prev_theta = euler_from_quaternion(utils.quat_to_tuple(axle_pose.orientation), axes='sxyz')[2]
                     delta_theta = self.pose_in.theta - self.prev_pose_in.theta
                     theta = prev_theta + delta_theta
-                    axle_pose.pose.orientation = unit_vector(quaternion_from_euler(0, 0, theta, axes='sxyz'))
-
-            self.prev_pose_in = self.pose_in
+                    axle_pose.orientation = utils.tuple_to_quat(unit_vector(quaternion_from_euler(0, 0, theta, axes='sxyz')))
 
             stopline_poses_predicted = self.model.get_stopline_poses_reference(axle_pose)
             self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
@@ -151,56 +149,63 @@ class LocalizationNode(DTROS):
 
             # Clustering red points
             clusters = self.stopline_detector.cluster_mask(red_mask, self.parameters['~eps'], self.parameters['~min_samples'], tk=tk)
-
             # Calculate quality indicators of clusters
             cluster_qualities = list([self.stopline_detector.cluster_quality(c) for c in clusters])
 
-            # TODO Handle case if there are no clusters found
-            if len(clusters) > 0:
-                # Calculate stopline poses from clusters
-                stopline_poses_measured = []
-                for cluster_points in clusters:
-                    pose = self.stopline_detector.calculate_pose_from_points(cluster_points)
-                    stopline_poses_measured.append(pose)
-                tk.completed('stopline pose calculations')
+            # Calculate stopline poses from clusters
+            stopline_poses_measured = []
+            for cluster_points in clusters: # may be empty
+                pose = self.stopline_detector.calculate_pose_from_points(cluster_points)
+                stopline_poses_measured.append(pose)
+            tk.completed('stopline pose calculations')
 
-                # Classify measured poses based on the predicted poses
-                labels = self.stopline_detector.classify_poses(stopline_poses_measured, stopline_poses_predicted)
-                tk.completed('classifying poses')
+            # Classify measured poses based on the predicted poses
+            labels = self.stopline_detector.classify_poses(stopline_poses_measured, stopline_poses_predicted)
+            tk.completed('classifying poses')
 
-                # Correct orientation of measured poses based on the predicted poses
-                stopline_poses_corrected = []
-                for pose_measured, label in zip(stopline_poses_measured, labels):
-                    corrected = self.stopline_detector.correct_orientation(pose_measured, stopline_poses_predicted[label])
-                    stopline_poses_corrected.append(corrected)
-                self.publish_pose_array(self.pub_stoplines_measured, 'axle', stopline_poses_corrected)
-                tk.completed('corrected poses')
+            # Correct orientation of measured poses based on the predicted poses
+            stopline_poses_corrected = []
+            for pose_measured, label in zip(stopline_poses_measured, labels):
+                corrected = self.stopline_detector.correct_orientation(pose_measured, stopline_poses_predicted[label])
+                stopline_poses_corrected.append(corrected)
 
-                if self.verbose:
-                    # TODO Write cluster quality in cluster center
-                    img_debug = self.stopline_detector.draw_debug_image(img_original, stopline_poses_predicted, stopline_poses_corrected, clusters, labels)
-                    utils.publish_image(self.bridge, self.pub_clustering, img_debug)
-                    tk.completed('debug image')
+            tk.completed('corrected poses')
 
-                # Calculate pose estimate of axle in intersection coordinate frame
-                poses_estimated = []
-                for stopline_pose, label in zip(stopline_poses_corrected, labels):
-                    pose_estimation = self.model.get_axle_pose_from_stopline_pose(stopline_pose, label)
-                    poses_estimated.append(pose_estimation.pose)
+            # Calculate pose estimate of axle in intersection coordinate frame
+            poses_estimated = []
+            for stopline_pose, label in zip(stopline_poses_corrected, labels):
+                pose_estimation = self.model.get_axle_pose_from_stopline_pose(stopline_pose, label)
+                poses_estimated.append(pose_estimation.pose)
 
-                self.publish_pose_array(self.pub_pose_estimates, 'intersection', poses_estimated)
-                tk.completed('pose estimations')
+            tk.completed('pose estimations')
 
-                # Filter pose estimates
+            # Filter pose estimates
+            best_pose_estimate = None
+            if len(poses_estimated) > 0:
                 self.stopline_filter.update_stopline_poses(poses_estimated, cluster_qualities)
                 best_pose_estimate = self.stopline_filter.get_best_estimate()
 
-                if best_pose_estimate is not None:
-                    self.pub_best_pose_estimate.publish(utils.stamp_pose('intersection', best_pose_estimate))
+            if best_pose_estimate is None:
+                best_pose_estimate = axle_pose # fall back to previous or from integration
 
-                    position, orientation = utils.pose_to_tuple(best_pose_estimate)
-                    self.last_position = position
-                    self.last_orientation = orientation
+            self.pub_best_pose_estimate.publish(utils.stamp_pose('intersection', best_pose_estimate))
+
+            position, orientation = utils.pose_to_tuple(best_pose_estimate)
+            self.last_position = position
+            self.last_orientation = orientation
+
+            self.prev_pose_in = self.pose_in
+
+            if self.verbose:
+                if len(stopline_poses_corrected) > 0:
+                    self.publish_pose_array(self.pub_stoplines_measured, 'axle', stopline_poses_corrected)
+                    self.publish_pose_array(self.pub_pose_estimates, 'intersection', poses_estimated)
+
+                # TODO Write cluster quality in cluster center
+                img_debug = self.stopline_detector.draw_debug_image(img_original, stopline_poses_predicted,
+                                                                    stopline_poses_corrected, clusters, labels)
+                utils.publish_image(self.bridge, self.pub_clustering, img_debug)
+                tk.completed('debug image')
 
 
             self.log(tk.getall())
