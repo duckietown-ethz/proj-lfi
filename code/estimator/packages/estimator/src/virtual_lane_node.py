@@ -54,19 +54,15 @@ class VirtualLaneNode(DTROS):
         for name in trajectory_names:
             track_x = rospy.get_param('~xCoords_{}'.format(name))
             track_y = rospy.get_param('~yCoords_{}'.format(name))
-            rate_x = rospy.get_param('~xRate_{}'.format(name))
-            rate_y = rospy.get_param('~yRate_{}'.format(name))
             tangent_angle = rospy.get_param('~tangentAngle_{}'.format(name))
             curvature = rospy.get_param('~curvature_{}'.format(name))
 
             track = np.vstack([np.array(track_x), np.array(track_y)]).T
-            rate = np.vstack([np.array(rate_x), np.array(rate_y)]).T
             tangent_angle = np.array(tangent_angle)
             curvature = np.array(curvature)
 
             trajectory = {
                 'track': track,
-                'rate': rate,
                 'tangent_angle': tangent_angle,
                 'curvature': curvature,
             }
