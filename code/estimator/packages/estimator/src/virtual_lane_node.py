@@ -57,15 +57,18 @@ class VirtualLaneNode(DTROS):
             rate_x = rospy.get_param('~xRate_{}'.format(name))
             rate_y = rospy.get_param('~yRate_{}'.format(name))
             tangent_angle = rospy.get_param('~tangentAngle_{}'.format(name))
+            curvature = rospy.get_param('~curvature_{}'.format(name))
 
             track = np.vstack([np.array(track_x), np.array(track_y)]).T
             rate = np.vstack([np.array(rate_x), np.array(rate_y)]).T
             tangent_angle = np.array(tangent_angle)
+            curvature = np.array(curvature)
 
             trajectory = {
                 'track': track,
                 'rate': rate,
                 'tangent_angle': tangent_angle,
+                'curvature': curvature,
             }
 
             result[name] = trajectory
@@ -93,6 +96,7 @@ class VirtualLaneNode(DTROS):
         trajectory = self.trajectories[self.trajectory]
         track = trajectory['track']
         tangent_angle = trajectory['tangent_angle']
+        curvature = trajectory['curvature']
 
         if self.verbose:
             # TODO Only publish this once
@@ -105,9 +109,9 @@ class VirtualLaneNode(DTROS):
         # u_l, u_r = self.run_pid(int_pose)
 
         # compute distance d and angle phi, same as in lane following
-        d, phi = self.relative_pose(int_pose, track, tangent_angle)
-        print("distance: " + str(d))
-        print("angle: " + str(phi))
+        d, phi, curv = self.relative_pose(int_pose, track, tangent_angle, curvature)
+        self.log("distance: " + str(d))
+        self.log("angle: " + str(phi))
 
         # convert to LanePose() message
         radius = track[-1][1]
@@ -115,13 +119,13 @@ class VirtualLaneNode(DTROS):
         lane_pose.header.stamp = int_pose.header.stamp
         lane_pose.d = d
         lane_pose.phi = phi
-        #lane_pose.curvature = 1 / radius
+        lane_pose.curvature = curv
 
         # publish lane pose msg
         self.pub_lanepose.publish(lane_pose)
 
 
-    def relative_pose(self, pose, track, tangent_angle):
+    def relative_pose(self, pose, track, tangent_angle, curvature):
         '''
         This function uses the current position of the duckiebot in the intersection-stop-line frame to find the closest
         distance to the optimal trajectory and the angle difference between the closest point of the optimal trajectory
@@ -144,11 +148,12 @@ class VirtualLaneNode(DTROS):
         self.publish_closest(closest_pos, car_pos)
 
         side = self.track_side(closest_pos, next_pos, car_pos)
-        d = min_dist * side
+        d = -min_dist * side
         # TODO Does this work without side?
         phi = yaw - closest_angle
+        curv = curvature[idx_min_dist]
 
-        return d, phi
+        return d, phi, curv
 
 
     def closest_track_point(self, track, car_pos):
@@ -176,10 +181,10 @@ class VirtualLaneNode(DTROS):
         :param pt3: current car position (x,y)
         :return a: -1 if car is on the left of the track, +1 if the car is on the right side of the track
         '''
-        if (pt2[0] - pt1[0])*(pt3[1] - pt1[1]) - (pt2[1] - pt1[1])*(pt3[0] - pt1[0]) > 0:
-            a = -1
+        if (pt2[0]-pt1[0]) * (pt3[1]-pt1[1]) - (pt2[1]-pt1[1]) * (pt3[0]-pt1[0]) > 0:
+            a = -1.0
         else:
-            a = 1
+            a = 1.0
         return a
 
 
