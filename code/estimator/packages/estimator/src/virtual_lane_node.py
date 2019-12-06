@@ -8,12 +8,16 @@ import yaml
 
 from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, LanePose
-from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import ColorRGBA
+from geometry_msgs.msg import PoseStamped, Point
+from visualization_msgs.msg import Marker, MarkerArray
 from cv_bridge import CvBridge
 from duckietown_utils import load_map, load_camera_intrinsics, load_homography, rectify
 from collections import OrderedDict
 from numpy import linalg as LA
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+
+import utils
 
 
 class VirtualLaneNode(DTROS):
@@ -24,89 +28,131 @@ class VirtualLaneNode(DTROS):
         self.veh_name = rospy.get_namespace().strip("/")
 
         # Initialize parameters
-        #self.parameters['~verbose'] = None
-        self.parameters['~xCoords'] = None
-        self.parameters['~yCoords'] = None
-        self.parameters['~xRate'] = None
-        self.parameters['~yRate'] = None
-        self.parameters['~tangentAngle'] = None
+        self.trajectories = self.load_trajectories(['straight', 'left', 'right'])
+
+        self.parameters['~verbose'] = None
+        self.parameters['~trajectory'] = None
         self.updateParameters()
         self.refresh_parameters()
 
         # Publishers
         self.pub_lanepose = rospy.Publisher("~lane_pose", LanePose, queue_size=1)
+        self.pub_trajectory = rospy.Publisher("~verbose/trajectory", Marker, queue_size=1)
+        self.pub_closest = rospy.Publisher("~verbose/closest_point", Marker, queue_size=1)
 
         # Subscribers
         self.sub_intpose = rospy.Subscriber("~intersection_pose", PoseStamped, self.cb_intpose, queue_size=1)
 
+        self.i = 0
+
         self.log("Initialized")
 
 
-    def cb_intpose(self, msg):
+    def load_trajectories(self, trajectory_names):
+        result = {}
+
+        for name in trajectory_names:
+            track_x = rospy.get_param('~xCoords_{}'.format(name))
+            track_y = rospy.get_param('~yCoords_{}'.format(name))
+            tangent_angle = rospy.get_param('~tangentAngle_{}'.format(name))
+            curvature = rospy.get_param('~curvature_{}'.format(name))
+
+            track = np.vstack([np.array(track_x), np.array(track_y)]).T
+            tangent_angle = np.array(tangent_angle)
+            curvature = np.array(curvature)
+
+            trajectory = {
+                'track': track,
+                'tangent_angle': tangent_angle,
+                'curvature': curvature,
+            }
+
+            result[name] = trajectory
+            self.log("Loaded trajectory '{}'".format(name))
+
+        return result
+
+
+    def cb_intpose(self, int_pose):
         '''
-        cb_intpose Function, that subscribes to the incoming LanePose (position and orientation of duckiebot) message and
-        publishes the PoseStamped message with the entries d and phi, that can be used for the controller
-        :param msg: LanePose ros message
+        cb_intpose Function, that subscribes to the incoming PoseStamped (position and orientation of duckiebot) message and
+        publishes the LanePose message with the entries d and phi, that can be used for the controller
+        :param int_pose: PoseStamped ros message
         :return: None
         '''
 
-        self.log('Received intersection pose!')
+        # TODO Change to debug level
+        self.log('Received intersection pose.')
+
+        if self.parametersChanged:
+            self.log('Parameters changed.', 'info')
+            self.refresh_parameters()
+            self.parametersChanged = False
+
+        trajectory = self.trajectories[self.trajectory]
+        track = trajectory['track']
+        tangent_angle = trajectory['tangent_angle']
+        curvature = trajectory['curvature']
+
+        if self.verbose:
+            # TODO Only publish this once
+            if self.i % 10 == 0:
+                self.publish_track(track, tangent_angle)
+            self.i += 1
 
         # compte motor commands for lefta nd right motor with a simple line following pid controller
         # --> this function is INCOMPLETE!
-        # u_l, u_r = self.run_pid(msg)
+        # u_l, u_r = self.run_pid(int_pose)
 
-        # compute distance d and angle phi, same as in line following
-        d, phi = self.relative_pose(msg)
+        # compute distance d and angle phi, same as in lane following
+        d, phi, curv = self.relative_pose(int_pose, track, tangent_angle, curvature)
+        self.log("distance: " + str(d))
+        self.log("angle: " + str(phi))
 
         # convert to LanePose() message
-        radius = self.y_track[-1]
-        print("distance: " + str(d))
-        print("angle: " + str(phi))
-        # convert to LanePose() message
-        msg_pub = LanePose()
-        msg_pub.header.stamp = msg.header.stamp
-        msg_pub.d = d
-        msg_pub.phi = phi
-        #msg_pub.curvature = 1 / radius
+        radius = track[-1][1]
+        lane_pose = LanePose()
+        lane_pose.header.stamp = int_pose.header.stamp
+        lane_pose.d = d
+        lane_pose.phi = phi
+        lane_pose.curvature = curv
 
         # publish lane pose msg
-        self.pub_lanepose.publish(msg_pub)
+        self.pub_lanepose.publish(lane_pose)
 
 
-    def relative_pose(self, msg):
+    def relative_pose(self, pose, track, tangent_angle, curvature):
         '''
         This function uses the current position of the duckiebot in the intersection-stop-line frame to find the closest
         distance to the optimal trajectory and the angle difference between the closest point of the optimal trajectory
         and current orientation of the duckiebot.
-        :param msg: current position of the duckiebot in the intersection-stop-line frame
+        :param pose: current position of the duckiebot in the intersection-stop-line frame
         :return: distance d and angle phi compared to the optimal trajectory --> same as for line following
         '''
 
-        db_position = msg.pose.position
-        db_orientation = msg.pose.orientation
-        orientation_list = [db_orientation.x, db_orientation.y, db_orientation.z, db_orientation.w]
-        (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+        position, orientation = utils.pose_to_tuple(pose.pose)
+        _, _, yaw = euler_from_quaternion(orientation)
+        car_pos = np.array(position[0:2])
 
-        idx_min_dist, min_dist = self.closest_track_point(db_position.x, db_position.y)
+        idx_min_dist, min_dist = self.closest_track_point(track, car_pos)
 
-        track_pt1 = np.array([self.x_track[idx_min_dist], self.y_track[idx_min_dist]])
-        track_pt2 = np.array([self.x_track[idx_min_dist + 1], self.y_track[idx_min_dist + 1]])
-        car_pt = np.array([db_position.x, db_position.y])
-        side = self.track_side(track_pt1, track_pt2, car_pt)
+        closest_pos = track[idx_min_dist]
+        closest_angle = tangent_angle[idx_min_dist]
+        next_pos = track[idx_min_dist + 1]
 
-        closest_pt = np.array([self.x_track[idx_min_dist], self.y_track[idx_min_dist]])
-        closest_angle = self.tangent_angle[idx_min_dist]
+        #if self.i % 10 == 0:
+        self.publish_closest(closest_pos, car_pos)
 
-        print("closest pt = " + str(closest_pt) + "; ang phi = " + str(closest_angle))
+        side = self.track_side(closest_pos, next_pos, car_pos)
+        d = -min_dist * side
+        # TODO Does this work without side?
+        phi = yaw - closest_angle
+        curv = curvature[idx_min_dist]
 
-        d = min_dist * side
-        phi = abs(closest_angle - yaw) * side
-
-        return d, phi
+        return d, phi, curv
 
 
-    def closest_track_point(self, x, y):
+    def closest_track_point(self, track, car_pos):
         '''
         Function finds the closest distance from the current robot position to the optimal trajectory and the index of
         the x_ or y_coordinates which corresponds to the closest distance
@@ -114,13 +160,8 @@ class VirtualLaneNode(DTROS):
         :param y: current duckiebot position y in stopline coordinate frame
         :return: minimal distance and its index
         '''
-        xdist = np.reshape(self.x_track, (-1, 1)) - x
-        ydist = np.reshape(self.y_track, (-1, 1)) - y
-        # print("xdist = " + str(xdist))
-        # print("ydist = " + str(ydist))
-        dist = np.hstack((xdist, ydist))
-        distances = LA.norm(dist, axis=1)
-        # print("LA.norm = " + str(distances))
+        diffs = track - car_pos
+        distances = LA.norm(diffs, axis=1)
         idx_min_dist = np.argmin(distances)
         min_dist = np.min(distances)
         # TODO: more efficient search, e.g. first rough search, then binary search
@@ -136,54 +177,82 @@ class VirtualLaneNode(DTROS):
         :param pt3: current car position (x,y)
         :return a: -1 if car is on the left of the track, +1 if the car is on the right side of the track
         '''
-        if (pt2[0] - pt1[0])*(pt3[1] - pt1[1]) - (pt2[1] - pt1[1])*(pt3[0] - pt1[0]) > 0:
-            a = -1
+        if (pt2[0]-pt1[0]) * (pt3[1]-pt1[1]) - (pt2[1]-pt1[1]) * (pt3[0]-pt1[0]) > 0:
+            a = -1.0
         else:
-            a = 1
+            a = 1.0
         return a
 
 
-    def run_pid(self, msg):
-        '''
-        PID controller which follows the optimal trajectory generated offline and stored in yaml files
-        --> This function is incomplete: some parameters need to be defined, the velocity needs to be computed and a
-        mapping from steer to torque left and right
-        :param msg: PoseStamed() message: current duckiebot position and orientation in stopline frame ?
-        :return: motor commands
-        '''
-        car_state = msg.pose.pose.pose
-        # TODO: find velocity of duckiebot
-        look_ahead_x = car_state.position.x + car_state.velocity.x * look_ahead
-        look_ahead_y = car_state.position.y + car_state.velocity.y * look_ahead
+    def publish_closest(self, pos1, pos2):
+        namespace = 'trajectory'
+        now = rospy.Time.now()
 
-        idx_min_dist, min_dist = self.closest_track_point(look_ahead_x, look_ahead_y)
+        marker = Marker()
+        marker.header.stamp = now
+        marker.header.frame_id = 'intersection'
+        marker.ns = namespace
+        marker.id = 1
+        marker.action = 0
+        marker.lifetime = rospy.Time(0)
+        marker.scale.x = 0.005
+        marker.scale.y = 0.005
+        marker.scale.z = 0.005
 
-        track_pt1 = np.array([self.x_track[idx_min_dist], self.y_track[idx_min_dist]])
-        track_pt2 = np.array([self.x_track[idx_min_dist + 1], self.y_track[idx_min_dist + 1]])
-        car_pt = np.array([look_ahead_x, look_ahead_y])
-        side = self.track_side(track_pt1, track_pt2, car_pt)
+        marker.type = 5
+        marker.pose = utils.origin_pose('intersection').pose
+        marker.points = [self.pos_to_point(pos1), self.pos_to_point(pos2)]
+        marker.color = self.gen_color(0,1,0)
+        marker.colors = []
 
-        position_error = side * min_dist
-        integral_error += position_error
+        self.pub_closest.publish(marker)
 
-        u_steer = kp*position_error + kd*(position_error-prev_position_error) + ki*integral_error
-        prev_position_error = position_error
+        return marker
 
-        u_torque = target_velocity
 
-        # TODO: find mapping from (torque, steer) to (torque left, torque right)
-        torque_left = fcn(u_torque, u_steer)
-        torque_right = fcn(u_torque, u_steer)
+    def publish_track(self, track, tangent_angle):
+        namespace = 'trajectory'
+        now = rospy.Time.now()
 
-        return torque_left, torque_right
+        def gen_marker():
+            marker = Marker()
+            marker.header.stamp = now
+            marker.header.frame_id = 'intersection'
+            marker.ns = namespace
+            marker.id = 2
+            marker.action = 0
+            marker.lifetime = rospy.Time(0)
+            marker.scale.x = 0.01
+            marker.scale.y = 0.01
+            marker.scale.z = 0.01
+
+            return marker
+
+        track_marker = gen_marker()
+        track_marker.type = 7
+        track_marker.pose = utils.origin_pose('intersection').pose
+        track_marker.points = list([self.pos_to_point(pos) for pos in track])
+        track_marker.colors = list([self.gen_color(0,0,1) for _ in track])
+
+        self.pub_trajectory.publish(track_marker)
+
+
+    def gen_color(self, r, g, b):
+        c = ColorRGBA()
+        c.r = float(r)
+        c.g = float(g)
+        c.b = float(b)
+        c.a = 1.0
+        return c
+
+
+    def pos_to_point(self, pos):
+        return Point(pos[0], pos[1], 0.0)
 
 
     def refresh_parameters(self):
-        self.x_track = self.parameters['~xCoords']
-        self.y_track = self.parameters['~yCoords']
-        self.x_rate = self.parameters['~xRate']
-        self.y_rate = self.parameters['~yRate']
-        self.tangent_angle = self.parameters['~tangentAngle']
+        self.verbose = self.parameters['~verbose']
+        self.trajectory = self.parameters['~trajectory']
 
 
 

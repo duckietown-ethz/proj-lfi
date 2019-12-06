@@ -1,0 +1,23 @@
+camera_matrix:
+  cols: 3
+  data: [357.30323765224847, 0.0, 318.1604381699294, 0.0, 356.5441018783732, 247.2599044769637,
+    0.0, 0.0, 1.0]
+  rows: 3
+camera_name: DuckyMcDuckface/camera_node
+distortion_coefficients:
+  cols: 5
+  data: [-0.35315963456079064, 0.09764682747672164, -0.011184852966618204, -0.002056349441430621,
+    0.0]
+  rows: 1
+distortion_model: plumb_bob
+image_height: 480
+image_width: 640
+projection_matrix:
+  cols: 4
+  data: [258.4966125488281, 0.0, 315.287758179471, 0.0, 0.0, 284.9307556152344, 238.37427755786848,
+    0.0, 0.0, 0.0, 1.0, 0.0]
+  rows: 3
+rectification_matrix:
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+  rows: 3

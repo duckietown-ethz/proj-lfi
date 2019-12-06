@@ -31,12 +31,17 @@
 		</node>
 
 		<node pkg="estimator" name="virtual_lane_node" type="virtual_lane_node.py" output="screen">
-			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/go_straight.yaml"/>
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/straight.yaml"/>
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/left.yaml"/>
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/right.yaml"/>
+
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/$(arg param_file_name).yaml"/>
 
 			<remap from="virtual_lane_node/intersection_pose" to="localization_node/best_pose_estimate"/>
 		</node>
 
 	</group>
+
 
 	<!-- Lane controller -->
 	<remap from="lane_controller_node/intersection_navigation_pose" to="virtual_lane_node/lane_pose"/>

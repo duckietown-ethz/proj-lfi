@@ -2,7 +2,7 @@
   <name>estimator</name>
   <version>0.1.0</version>
   <description>
-  This package implements RH4.
+  This package implements intersection navigation.
   </description>
   <maintainer email="cleopolds@student.ethz.ch">Christian Leopoldseder</maintainer>
   <license>None</license>
