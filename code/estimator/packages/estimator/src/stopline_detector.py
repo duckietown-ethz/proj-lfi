@@ -137,6 +137,8 @@ class StoplineDetector():
     # poses and poses_predicted need to be in the same coordinate frame
     # Classification is done with nearest positional neighbor
     def classify_poses(self, poses_measured, poses_reference):
+        if len(poses_measured) == 0:
+            return []
         positions_measured = np.array([(p.position.x, p.position.y) for p in poses_measured])
         positions_reference = np.array([(p.position.x, p.position.y) for p in poses_reference])
         labels_known = np.arange(positions_reference.shape[0])

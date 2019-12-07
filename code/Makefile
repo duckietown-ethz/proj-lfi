@@ -1,7 +1,7 @@
 # Set this to 0 to build/run on the duckiebot and to 1 to build/run locally
-LOCAL=1
-ACCESSIBLE_LAUNCHFILES=0
-DB_NAME = DuckyMcDuckface
+LOCAL=0
+ACCESSIBLE_LAUNCHFILES=1
+DB_NAME = theducknight
 DB_NAME_LOCAL = laptop
 DB_IP= # if not set makefile will ping the hostname to get the IP
 HOST = $(DB_NAME).local

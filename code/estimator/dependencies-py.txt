@@ -3,4 +3,3 @@ matplotlib==2.2.4
 reprep
 numpy
 scikit-learn
-hdbscan
