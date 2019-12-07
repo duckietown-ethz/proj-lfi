@@ -7,7 +7,7 @@ import rospy
 import yaml
 
 from duckietown import DTROS
-from duckietown_msgs.msg import WheelsCmdStamped, LanePose
+from duckietown_msgs.msg import WheelsCmdStamped, LanePose, BoolStamped
 from std_msgs.msg import ColorRGBA
 from geometry_msgs.msg import PoseStamped, Point
 from visualization_msgs.msg import Marker, MarkerArray
@@ -39,6 +39,8 @@ class VirtualLaneNode(DTROS):
         self.pub_lanepose = rospy.Publisher("~lane_pose", LanePose, queue_size=1)
         self.pub_trajectory = rospy.Publisher("~verbose/trajectory", Marker, queue_size=1)
         self.pub_closest = rospy.Publisher("~verbose/closest_point", Marker, queue_size=1)
+        self.pub_switch2lanefollow = rospy.Publisher("~/{}/logic_gate_node/intersection_done_and_deep_lane_off"
+                                                     .format(self.veh_name), BoolStamped, queue_size=1)
 
         # Subscribers
         self.sub_intpose = rospy.Subscriber("~intersection_pose", PoseStamped, self.cb_intpose, queue_size=1)
