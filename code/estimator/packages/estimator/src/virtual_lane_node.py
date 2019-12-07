@@ -39,8 +39,7 @@ class VirtualLaneNode(DTROS):
         self.pub_lanepose = rospy.Publisher("~lane_pose", LanePose, queue_size=1)
         self.pub_trajectory = rospy.Publisher("~verbose/trajectory", Marker, queue_size=1)
         self.pub_closest = rospy.Publisher("~verbose/closest_point", Marker, queue_size=1)
-        self.pub_switch2lanefollow = rospy.Publisher("~/{}/logic_gate_node/intersection_done_and_deep_lane_off"
-                                                     .format(self.veh_name), BoolStamped, queue_size=1)
+        self.pub_switch2lanefollow = rospy.Publisher("~intersection_done", BoolStamped, queue_size=1)
 
         # Subscribers
         self.sub_intpose = rospy.Subscriber("~intersection_pose", PoseStamped, self.cb_intpose, queue_size=1)
@@ -136,7 +135,7 @@ class VirtualLaneNode(DTROS):
         _, _, yaw = euler_from_quaternion(orientation)
         car_pos = np.array(position[0:2])
 
-        idx_min_dist, min_dist = self.closest_track_point(track, car_pos)
+        idx_min_dist, min_dist = self.closest_track_point(track[:-1], car_pos)
 
         '''dist2end = LA.norm(track[-1, :] - car_pos)
         ang2end = abs(tangent_angle[-1]-yaw)*180/np.pi
@@ -160,10 +159,7 @@ class VirtualLaneNode(DTROS):
 
         closest_pos = track[idx_min_dist]
         closest_angle = tangent_angle[idx_min_dist]
-        if idx_min_dist == len(tangent_angle):
-            next_pos = track[idx_min_dist - 1]
-        else:
-            next_pos = track[idx_min_dist + 1]
+        next_pos = track[idx_min_dist + 1]
 
         #if self.i % 10 == 0:
         self.publish_closest(closest_pos, car_pos)

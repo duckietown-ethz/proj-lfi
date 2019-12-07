@@ -37,6 +37,7 @@
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/$(arg param_file_name).yaml"/>
 
 			<remap from="virtual_lane_node/intersection_pose" to="localization_node/best_pose_estimate"/>
+			<remap from="virtual_lane_node/intersection_done" to="logic_gate_node/intersection_done_and_deep_lane_off"/>
 		</node>
 
 	</group>
