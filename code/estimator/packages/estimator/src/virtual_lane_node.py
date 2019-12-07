@@ -158,10 +158,12 @@ class VirtualLaneNode(DTROS):
         # publish lane pose msg
         self.pub_switch2lanefollow.publish(switch)
 
-
         closest_pos = track[idx_min_dist]
         closest_angle = tangent_angle[idx_min_dist]
-        next_pos = track[idx_min_dist + 1]
+        if idx_min_dist == len(tangent_angle):
+            next_pos = track[idx_min_dist - 1]
+        else:
+            next_pos = track[idx_min_dist + 1]
 
         #if self.i % 10 == 0:
         self.publish_closest(closest_pos, car_pos)
