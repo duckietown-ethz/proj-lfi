@@ -36,7 +36,8 @@ class StoplineFilter():
                 #avg_orientation = utils.quat_to_tuple(pose_estimates[idx_max].orientation)
                 avg_orientation = utils.average_quaternion(orientations, weights)
                 self.current_estimate = utils.pose(avg_position, avg_orientation)
-
+            else:
+                self.current_estimate = None # Let integration fill the gaps!
 
     def get_best_estimate(self):
         return self.current_estimate
