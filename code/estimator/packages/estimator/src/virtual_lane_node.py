@@ -138,6 +138,28 @@ class VirtualLaneNode(DTROS):
 
         idx_min_dist, min_dist = self.closest_track_point(track, car_pos)
 
+        self.log("SWITCH BACK TO LANE FOLLOWING!!")
+        dist2end = LA.norm(track[-1, :] - car_pos)
+        ang2end = abs(tangent_angle[-1]-yaw)*180/np.pi
+        self.log("distance to endpoint: {}".format(dist2end))
+        '''self.log("position of endpoint: {}".format(track[-1,:]))
+        self.log("yaw angle of car: {}".format(yaw*180/np.pi))
+        self.log("angle of endpoint: {}".format(tangent_angle[-1]*180/np.pi))
+        self.log("angle to endpoint: {}".format(ang2end))'''
+        # if the distance from the car position to the end of the optimal trajectory is less than 28 cm
+        # and the difference between the angle of the car and end ot the optimal trajectory is less than 15 degrees
+        # switch back to lane following
+        switch = BoolStamped()
+        switch.header.stamp = rospy.Time(0)
+        if LA.norm(track[-1, :] - car_pos) < 0.28 and abs(tangent_angle[-1]-yaw) < 15*np.pi/180:
+            self.log("SWITCH BACK TO LANE FOLLOWING!!")
+            switch.data = True
+        else:
+            switch.data = False
+        # publish lane pose msg
+        self.pub_switch2lanefollow.publish(switch)
+
+
         closest_pos = track[idx_min_dist]
         closest_angle = tangent_angle[idx_min_dist]
         next_pos = track[idx_min_dist + 1]

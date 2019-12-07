@@ -122,30 +122,30 @@ class trackGenerator:
 
 
 def main():
+    '''
+    Equal spacing: currently every point is 2 mm apart
+    '''
     gen = trackGenerator()
     # addLine(x0, y0, x1, y1, pointsPerArcLength)
     # addArc(x0, y0, radius, theta_0, theta_1, pointsPerArcLength)
 
     # left turn
-    #radius_left = 0.075 + 0.205 + 0.025 + 0.1025
     '''
     radius_left = 0.205 + 0.1025 + 0.024 + 0.024
-    gen.addLine(0, -0.30, 0, 0, 200)
-    gen.addArc(-radius_left, 0, radius_left, 0, np.pi / 2, 200)
-    gen.addLine(-radius_left, radius_left, -0.10 - radius_left, radius_left, 200)
+    gen.addLine(0, -0.30, 0, 0, round(1000/2*0.3))
+    gen.addArc(-radius_left, 0, radius_left, 0, np.pi / 2, round(1000/2*(2*radius_left*np.pi/4)))
+    gen.addLine(-radius_left, radius_left, -0.10 - radius_left, radius_left, round(1000/2*0.1))
     '''
 
     # right turn
-    #radius_right = 0.1025 + 0.075
     radius_right = 0.1025 + 0.024
-    gen.addLine(0, -0.30, 0, 0, 200)
-    gen.addArc(radius_right, 0, radius_right, np.pi, np.pi/2, 200)
-
-    gen.addLine(radius_right, radius_right, 0.10 + radius_right, radius_right, 200 )
+    gen.addLine(0, -0.30, 0, 0, round(1000/2*0.3))
+    gen.addArc(radius_right, 0, radius_right, np.pi, np.pi/2, round(1000/2*(2*radius_right*np.pi/4)))
+    gen.addLine(radius_right, radius_right, 0.10 + radius_right, radius_right, round(1000/2*0.1))
 
     # go straight
     '''
-    gen.addLine(0, -0.30, 0, 0.435 + 0.048 + 0.10, 200)
+    gen.addLine(0, -0.30, 0, 0.435 + 0.048 + 0.10, round(1000/2*(0.3+0.1+0.048+0.435)))
     '''
 
     gen.populatePointsAndArcLength()
