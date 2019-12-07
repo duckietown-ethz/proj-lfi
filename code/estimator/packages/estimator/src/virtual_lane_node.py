@@ -138,11 +138,10 @@ class VirtualLaneNode(DTROS):
 
         idx_min_dist, min_dist = self.closest_track_point(track, car_pos)
 
-        self.log("SWITCH BACK TO LANE FOLLOWING!!")
-        dist2end = LA.norm(track[-1, :] - car_pos)
+        '''dist2end = LA.norm(track[-1, :] - car_pos)
         ang2end = abs(tangent_angle[-1]-yaw)*180/np.pi
         self.log("distance to endpoint: {}".format(dist2end))
-        '''self.log("position of endpoint: {}".format(track[-1,:]))
+        self.log("position of endpoint: {}".format(track[-1,:]))
         self.log("yaw angle of car: {}".format(yaw*180/np.pi))
         self.log("angle of endpoint: {}".format(tangent_angle[-1]*180/np.pi))
         self.log("angle to endpoint: {}".format(ang2end))'''
