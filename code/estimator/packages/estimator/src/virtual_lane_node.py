@@ -149,6 +149,8 @@ class VirtualLaneNode(DTROS):
         # switch back to lane following
         switch = BoolStamped()
         switch.header.stamp = rospy.Time(0)
+        self.log("distance to end: {}".format(LA.norm(track[-1, :] - car_pos)))
+        self.log("angle to end: {}".format(abs(tangent_angle[-1]-yaw)))
         if LA.norm(track[-1, :] - car_pos) < 0.28 and abs(tangent_angle[-1]-yaw) < 15*np.pi/180:
             self.log("SWITCH BACK TO LANE FOLLOWING!!")
             switch.data = True
