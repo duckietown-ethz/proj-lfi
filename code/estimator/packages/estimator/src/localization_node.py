@@ -193,8 +193,9 @@ class LocalizationNode(DTROS):
             return
 
         stopline_poses_predicted = self.model.get_stopline_poses_reference(self.pose.pose)
-        # To see them in rviz: (they are also in colour on the frame)
-        self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
+        if self.verbose:
+            # To see them in rviz: (they are also in colour on the frame)
+            self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
         tk.completed('predict poses')
 
 

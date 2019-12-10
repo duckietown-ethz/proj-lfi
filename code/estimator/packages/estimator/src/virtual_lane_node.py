@@ -98,7 +98,6 @@ class VirtualLaneNode(DTROS):
         curvature = trajectory['curvature']
 
         if self.verbose:
-            # TODO Only publish this once
             if self.i % 10 == 0:
                 self.publish_track(track, tangent_angle)
             self.i += 1
@@ -168,12 +167,11 @@ class VirtualLaneNode(DTROS):
         closest_angle = tangent_angle[idx_min_dist]
         next_pos = track[idx_min_dist + 1]
 
-        #if self.i % 10 == 0:
-        self.publish_closest(closest_pos, car_pos)
+        if self.verbose:
+            self.publish_closest(closest_pos, car_pos)
 
         side = self.track_side(closest_pos, next_pos, car_pos)
         d = -min_dist * side
-        # TODO Does this work without side?
         phi = yaw - closest_angle
         curv = curvature[idx_min_dist]
 
