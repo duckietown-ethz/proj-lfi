@@ -1,2 +1,4 @@
 verbose: true
 trajectory: straight
+end_condition_distance: 0.28
+end_condition_angle_deg: 15

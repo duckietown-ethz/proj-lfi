@@ -32,6 +32,8 @@ class VirtualLaneNode(DTROS):
 
         self.parameters['~verbose'] = None
         self.parameters['~trajectory'] = None
+        self.parameters['~end_condition_distance'] = None
+        self.parameters['~end_condition_angle_deg'] = None
         self.updateParameters()
         self.refresh_parameters()
 
@@ -145,15 +147,20 @@ class VirtualLaneNode(DTROS):
         self.log("angle of endpoint: {}".format(tangent_angle[-1]*180/np.pi))
         self.log("angle to endpoint: {}".format(ang2end))'''
         # if the distance from the car position to the end of the optimal trajectory is less than 28 cm
-        # and the difference between the angle of the car and end ot the optimal trajectory is less than 15 degrees
+        # and the difference between the angle of the car and end of the optimal trajectory is less than 15 degrees
         # switch back to lane following
+        distance_to_end = LA.norm(track[-1, :] - car_pos)
+        angle_to_end = abs(tangent_angle[-1]-yaw)
+        end_condition_angle_rad = np.deg2rad(self.end_condition_angle_deg)
+        distance_good_enough = distance_to_end < self.end_condition_distance
+        angle_good_enough = angle_to_end < end_condition_angle_rad
+
+
         switch = BoolStamped()
         switch.header.stamp = rospy.Time(0)
-        if LA.norm(track[-1, :] - car_pos) < 0.28 and abs(tangent_angle[-1]-yaw) < 15*np.pi/180:
+        switch.data = distance_good_enough and angle_good_enough
+        if switch.data:
             self.log("SWITCH BACK TO LANE FOLLOWING!!")
-            switch.data = True
-        else:
-            switch.data = False
         # publish lane pose msg
         self.pub_switch2lanefollow.publish(switch)
 
@@ -274,6 +281,8 @@ class VirtualLaneNode(DTROS):
     def refresh_parameters(self):
         self.verbose = self.parameters['~verbose']
         self.trajectory = self.parameters['~trajectory']
+        self.end_condition_distance = self.parameters['~end_condition_distance']
+        self.end_condition_angle_deg = self.parameters['~end_condition_angle_deg']
 
 
 
