@@ -31,18 +31,13 @@ class LocalizationNode(DTROS):
         self.veh_name = rospy.get_namespace().strip("/")
 
         # Initialize parameters
-        rospy.set_param('~x', 0.0)
-        rospy.set_param('~y', -0.20)
-        rospy.set_param('~z', 0.0)
-
-        rospy.set_param('~eps', 0.5)
-        self.parameters['~eps'] = None
-        rospy.set_param('~min_samples', 4)
-        self.parameters['~min_samples'] = None
-
         self.parameters['~verbose'] = None
         self.parameters['/{}/preprocessor_node/image_size'.format(self.veh_name)] = None
-        self.parameters['/{}/preprocessor_node/top_cutoff_percent'.format(self.veh_name)] = None
+        self.parameters['~start_x'] = None
+        self.parameters['~start_y'] = None
+        self.parameters['~start_z'] = None
+        self.parameters['~dbscan_eps'] = None
+        self.parameters['~dbscan_min_samples'] = None
         self.updateParameters()
         self.refresh_parameters()
 
@@ -111,7 +106,7 @@ class LocalizationNode(DTROS):
             self.reset()
 
     def reset(self):
-        position = [rospy.get_param('~x'), rospy.get_param('~y'), rospy.get_param('~z')]
+        position = [self.start_x, self.start_y, self.start_z]
         heading = np.pi/2.0 # TODO: make this a param as well
         orientation = unit_vector(quaternion_from_euler(0, 0, heading, axes='sxyz'))
         self.pose = utils.pose_stamped('intersection', position, orientation)
@@ -198,8 +193,9 @@ class LocalizationNode(DTROS):
             return
 
         stopline_poses_predicted = self.model.get_stopline_poses_reference(self.pose.pose)
-        # To see them in rviz: (they are also in colour on the frame)
-        self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
+        if self.verbose:
+            # To see them in rviz: (they are also in colour on the frame)
+            self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
         tk.completed('predict poses')
 
 
@@ -209,7 +205,7 @@ class LocalizationNode(DTROS):
             utils.publish_image(self.bridge, self.pub_red_filter, dbg_image)
 
         # Clustering red points
-        clusters = self.stopline_detector.cluster_mask(red_mask, self.parameters['~eps'], self.parameters['~min_samples'], tk=tk)
+        clusters = self.stopline_detector.cluster_mask(red_mask, self.dbscan_eps, self.dbscan_min_samples, tk=tk)
         # Calculate quality indicators of clusters
         cluster_qualities = list([self.stopline_detector.cluster_quality(c) for c in clusters])
 
@@ -301,7 +297,11 @@ class LocalizationNode(DTROS):
         image_size = self.parameters['/{}/preprocessor_node/image_size'.format(self.veh_name)]
         self.image_size_height = image_size['height']
         self.image_size_width = image_size['width']
-        self.top_cutoff_percent = self.parameters['/{}/preprocessor_node/top_cutoff_percent'.format(self.veh_name)]
+        self.start_x = self.parameters['~start_x']
+        self.start_y = self.parameters['~start_y']
+        self.start_z = self.parameters['~start_z']
+        self.dbscan_eps = self.parameters['~dbscan_eps']
+        self.dbscan_min_samples = self.parameters['~dbscan_min_samples']
 
 
     def onShutdown(self):

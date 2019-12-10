@@ -32,6 +32,8 @@ class VirtualLaneNode(DTROS):
 
         self.parameters['~verbose'] = None
         self.parameters['~trajectory'] = None
+        self.parameters['~end_condition_distance'] = None
+        self.parameters['~end_condition_angle_deg'] = None
         self.updateParameters()
         self.refresh_parameters()
 
@@ -96,7 +98,6 @@ class VirtualLaneNode(DTROS):
         curvature = trajectory['curvature']
 
         if self.verbose:
-            # TODO Only publish this once
             if self.i % 10 == 0:
                 self.publish_track(track, tangent_angle)
             self.i += 1
@@ -145,30 +146,38 @@ class VirtualLaneNode(DTROS):
         self.log("angle of endpoint: {}".format(tangent_angle[-1]*180/np.pi))
         self.log("angle to endpoint: {}".format(ang2end))'''
         # if the distance from the car position to the end of the optimal trajectory is less than 28 cm
-        # and the difference between the angle of the car and end ot the optimal trajectory is less than 15 degrees
+        # and the difference between the angle of the car and end of the optimal trajectory is less than 15 degrees
         # switch back to lane following
+        distance_to_end = LA.norm(track[-1, :] - car_pos)
+        angle_to_end = abs(tangent_angle[-1]-yaw)
+
+        if self.verbose:
+            self.log("distance to end: {}".format(distance_to_end))
+            self.log("angle to end: {}".format(angle_to_end))
+
+        end_condition_angle_rad = np.deg2rad(self.end_condition_angle_deg)
+        distance_good_enough = distance_to_end < self.end_condition_distance
+        angle_good_enough = angle_to_end < end_condition_angle_rad
+
         switch = BoolStamped()
         switch.header.stamp = rospy.Time(0)
-        self.log("distance to end: {}".format(LA.norm(track[-1, :] - car_pos)))
-        self.log("angle to end: {}".format(abs(tangent_angle[-1]-yaw)))
-        if LA.norm(track[-1, :] - car_pos) < 0.28 and abs(tangent_angle[-1]-yaw) < 15*np.pi/180:
-            self.log("SWITCH BACK TO LANE FOLLOWING!!")
-            switch.data = True
-        else:
-            switch.data = False
-        # publish lane pose msg
+        switch.data = distance_good_enough and angle_good_enough
+
         self.pub_switch2lanefollow.publish(switch)
 
+        if switch.data:
+            self.log("SWITCH BACK TO LANE FOLLOWING!!")
+            
+        # publish lane pose msg
         closest_pos = track[idx_min_dist]
         closest_angle = tangent_angle[idx_min_dist]
         next_pos = track[idx_min_dist + 1]
 
-        #if self.i % 10 == 0:
-        self.publish_closest(closest_pos, car_pos)
+        if self.verbose:
+            self.publish_closest(closest_pos, car_pos)
 
         side = self.track_side(closest_pos, next_pos, car_pos)
         d = -min_dist * side
-        # TODO Does this work without side?
         phi = yaw - closest_angle
         curv = curvature[idx_min_dist]
 
@@ -276,6 +285,8 @@ class VirtualLaneNode(DTROS):
     def refresh_parameters(self):
         self.verbose = self.parameters['~verbose']
         self.trajectory = self.parameters['~trajectory']
+        self.end_condition_distance = self.parameters['~end_condition_distance']
+        self.end_condition_angle_deg = self.parameters['~end_condition_angle_deg']
 
 
 

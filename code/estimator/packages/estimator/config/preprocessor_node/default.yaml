@@ -1,4 +1,4 @@
-verbose: true
+verbose: false
 image_size:
     width: 256
     height: 192
