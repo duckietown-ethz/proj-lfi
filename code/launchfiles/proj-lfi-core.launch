@@ -9,7 +9,7 @@
 		<arg name="veh" value="$(arg veh)"/>
 		<arg name="visualization" default="true" />
 		<!--arg name="verbose" value="$(arg verbose)" /-->
-    	<arg name="/camera/raw" default="true" />
+    <arg name="/camera/raw" default="false" />
 		<arg name="param_file_name" default="default" />
 		<arg name="line_detector_param_file_name" default="default" />
 		<arg name="anti_instagram" default="true" />
@@ -17,9 +17,12 @@
 		<arg name="ai_interval" value="$(arg ai_interval)"/>
 		<arg name="/lane_following/stop_line_filter" default="true" /> <!-- will not every allow a transition into COORDINATION mode -->
 		<arg name="vehicle_avoidance" default="false"/>
+		<arg name="LED" default="false" />
 
-		<arg name="apriltags" default="true"/>
-		<arg name="/camera/raw/rect" default="true"/>
-		<arg name="fsm" default="false"/>
+		<arg name="apriltags" default="false"/>
+		<arg name="/camera/raw/rect" default="false"/>
+		<arg name="fsm" default="true"/>
+		<arg name="/navigation/intersection_navigation" default="false"/>
+
 	</include>
 </launch>
