@@ -37,6 +37,7 @@
 
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/$(arg param_file_name).yaml"/>
 
+			<remap from="virtual_lane_node/lane_pose" to="lane_controller_node/intersection_navigation_pose"/>
 			<remap from="virtual_lane_node/intersection_pose" to="localization_node/best_pose_estimate"/>
 			<remap from="virtual_lane_node/intersection_done" to="logic_gate_node/intersection_done_and_deep_lane_off"/>
 		</node>
@@ -44,7 +45,7 @@
 	</group>
 
 
-	<!-- Lane controller -->
+	<!-- Lane controller
 	<remap from="lane_controller_node/intersection_navigation_pose" to="virtual_lane_node/lane_pose"/>
 	<remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
 	<remap from="lane_controller_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
@@ -57,6 +58,6 @@
 	<include file="$(find lane_control)/launch/lane_controller_node.launch">
 		<arg name="veh" value="$(arg veh)"/>
 		<arg name="param_file_name" value="default"/>
-	</include>
+	</include> -->
 
 </launch>
