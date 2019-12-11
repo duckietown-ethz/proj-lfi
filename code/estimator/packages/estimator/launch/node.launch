@@ -20,6 +20,7 @@
 
 			<remap from="localization_node/image_in/compressed" to="birdseye_node/image_out/compressed"/>
 			<remap from="localization_node/camera_info" to="camera_node/camera_info"/>
+			<remap from="localization_node/mode" to="fsm_node/mode"/>
 			<remap from="localization_node/open_loop_pose_estimate" to="velocity_to_pose_node/pose"/>
 			<!-- Reset state if the image stream loops -->
 			<remap from="localization_node/reset" to="camera_node/loop"/>

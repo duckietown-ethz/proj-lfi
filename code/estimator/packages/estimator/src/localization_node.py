@@ -9,7 +9,7 @@ from duckietown import DTROS
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from geometry_msgs.msg import Point, Quaternion, PoseStamped, PoseArray
 from std_msgs.msg import Bool
-from duckietown_msgs.msg import Pose2DStamped
+from duckietown_msgs.msg import Pose2DStamped, FSMState
 from cv_bridge import CvBridge, CvBridgeError
 
 import utils
@@ -46,6 +46,9 @@ class LocalizationNode(DTROS):
         self.sub_reset = self.subscriber('~reset', Bool, self.cb_reset, queue_size=1)
         self.sub_pose_in = self.subscriber('~open_loop_pose_estimate', Pose2DStamped, self.cb_pose_in, queue_size=1)
 
+        #TODO: listen to FSM mode and call reset when we enter NAVIGATION_COORDINATION
+        self.sub_fsm = self.subscriber('~mode', FSMState, self.cb_mode, queue_size=1)
+
         # Publishers
         self.pub_clustering = self.publisher('~verbose/clustering/compressed', CompressedImage, queue_size=1)
         self.pub_red_filter = self.publisher('~verbose/red_filter/compressed', CompressedImage, queue_size=1)
@@ -64,7 +67,14 @@ class LocalizationNode(DTROS):
 
         self.scaled_homography = None
 
+        self.resetting = False
+
         self.log('Waiting for camera to update its parameters.')
+
+    def cb_mode(self,fsm_state_msg):
+        if fsm_state_msg.state == "INTERSECTION_COORDINATION":
+            self.log('Setting up for intersection')
+            self.reset()
 
     def cb_camera_info(self, msg):
         if self.image_size_width == msg.width and self.image_size_height == msg.height:
@@ -106,6 +116,10 @@ class LocalizationNode(DTROS):
             self.reset()
 
     def reset(self):
+        self.log('Intersection localization is resetting')
+        self.resetting = True
+        # TODO: replace with mutex or workaround
+        rospy.sleep(.2) # wait for current image to finish processing
         position = [self.start_x, self.start_y, self.start_z]
         heading = np.pi/2.0 # TODO: make this a param as well
         orientation = unit_vector(quaternion_from_euler(0, 0, heading, axes='sxyz'))
@@ -113,6 +127,7 @@ class LocalizationNode(DTROS):
         self.pub_pose()
         self.integrator_offset = None
         self.pose_in = None
+        self.resetting = False
 
     def correct(self, pose_in):
         # assume integrator_offset is initialized
@@ -176,6 +191,7 @@ class LocalizationNode(DTROS):
 
 
     def cb_image_in(self, msg):
+        if self.resetting == True: return
         if self.is_shutdown: return
         # TODO Change to debug level
         self.log('Received image.', 'info')
