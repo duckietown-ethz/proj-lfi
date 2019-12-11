@@ -12,6 +12,7 @@ from std_msgs.msg import Bool
 from duckietown_msgs.msg import Pose2DStamped, FSMState
 from cv_bridge import CvBridge, CvBridgeError
 
+
 import utils
 from config_loader import get_camera_info_for_robot, get_homography_for_robot
 from intersection_model import Intersection4wayModel
@@ -32,6 +33,13 @@ class LocalizationNode(DTROS):
 
         # Initialize parameters
         self.parameters['~verbose'] = None
+
+        rospy.set_param('~omega_factor', 0.1)
+        self.parameters['~omega_factor'] = 0.1
+
+        rospy.set_param('~integration_enabled', False)
+        self.parameters['~integration_enabled'] = False
+
         self.parameters['/{}/preprocessor_node/image_size'.format(self.veh_name)] = None
         self.parameters['~start_x'] = None
         self.parameters['~start_y'] = None
@@ -57,11 +65,14 @@ class LocalizationNode(DTROS):
         self.pub_pose_estimates = self.publisher('~pose_estimates', PoseArray, queue_size=1)
         self.pub_best_pose_estimate = self.publisher('~best_pose_estimate', PoseStamped, queue_size=1)
 
+
         self.bridge = CvBridge()
 
         self.pose = None
         self.pose_in = None
         self.integrator_offset = None
+
+        self.last_thetain = None # for simulating inertia
 
         self.reset()
 
@@ -91,7 +102,6 @@ class LocalizationNode(DTROS):
             # This topic subscription is only needed initially, so it can be unregistered.
             self.sub_camera_info.unregister()
             self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.scaled_homography.cb_camera_info, queue_size=1)
-
             buffer_size = msg.width * msg.height * 3 * 2
             self.log('Buffer size set to {}.'.format(buffer_size), 'info')
             # Now the node can proceed to process images
@@ -100,6 +110,7 @@ class LocalizationNode(DTROS):
             self.log('Initialized.')
 
     def cb_pose_in(self, pose2d_in):
+        if not self.parameters['~integration_enabled']: return
         self.pose_in = pose2d_in
         if self.integrator_offset is None:
             self.update_integrator_offset()
@@ -141,9 +152,12 @@ class LocalizationNode(DTROS):
         thetain = pose_in.theta # <--- this dude needs some inertia
         # ideally damping should be done by the kinematics node
         #                           how can you expect infinite acceleration!!
-        # for now... here it is
 
-
+        # for now... I'll just grossly slow it down
+        if self.last_thetain is not None:
+            dtheta = thetain - self.last_thetain
+            thetain = self.last_thetain + self.parameters['~omega_factor']*dtheta
+        self.last_thetain = thetain
 
         xoff = self.integrator_offset[0]
         yoff = self.integrator_offset[1]
@@ -216,7 +230,6 @@ class LocalizationNode(DTROS):
             self.publish_pose_array(self.pub_stoplines_predicted, 'axle', stopline_poses_predicted)
         tk.completed('predict poses')
 
-
         # Filtering red
         red_mask, dbg_image = self.stopline_detector.filter_red(img_original, verbose=self.verbose, tk=tk)
         if dbg_image is not None:
@@ -277,6 +290,7 @@ class LocalizationNode(DTROS):
             tk.completed('debug image')
 
             self.log(tk.getall())
+
 
     def draw_position_on_intersection(self, position_meter, angle):
         rospack = rospkg.RosPack()
