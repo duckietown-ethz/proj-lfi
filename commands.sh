@@ -60,8 +60,10 @@ rostopic pub -1 /theducknight/localization_node/reset std_msgs/Bool True
 
 rostopic pub -1 /theducknight/camera_node/loop std_msgs/Bool True
 rosparam set /theducknight/localization_node/verbose True
-
+rosparam set /theducknight/virtual_lane_node/trajectory left
 # DISABLE CAR CMD (faster than shutting down the car-interface...)
 rosservice call /theducknight/car_cmd_switch_node/switch False
+
+rosparam set /theducknight/camera_node/res_h 120 && rosparam set /theducknight/camera_node/res_w 160
 
 /theducknight/lane_controller_node/intersection_navigation_pose
