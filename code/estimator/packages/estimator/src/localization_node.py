@@ -112,6 +112,7 @@ class LocalizationNode(DTROS):
 
     def cb_reset(self, msg):
         do_reset = msg.data
+        self.log('got reset command: '+str(do_reset))
         if do_reset:
             self.reset()
 
@@ -174,12 +175,10 @@ class LocalizationNode(DTROS):
         xin = self.pose_in.x
         yin = self.pose_in.y
         thetain = self.pose_in.theta
-        self.log('odom x=%.3f\ty=%.3f\tth=%.3f'%(xin,yin,thetain))
 
         x = self.pose.pose.position.x
         y = self.pose.pose.position.y
         theta = euler_from_quaternion(utils.quat_to_tuple(self.pose.pose.orientation))[2]
-        self.log('pose x=%.3f\ty=%.3f\tth=%.3f'%(x,y,theta))
 
         thetaoff = theta - thetain
         # align axes first
@@ -187,15 +186,18 @@ class LocalizationNode(DTROS):
         yoff = y - xin*np.sin(thetaoff) - yin*np.cos(thetaoff)
 
         self.integrator_offset = (xoff, yoff, thetaoff)
-        self.log('offs x=%.3f\ty=%.3f\tth=%.3f'%(xoff,yoff,thetaoff))
 
+        if self.verbose:
+            self.log('odom x=%.3f\ty=%.3f\tth=%.3f'%(xin,yin,thetain))
+            self.log('pose x=%.3f\ty=%.3f\tth=%.3f'%(x,y,theta))
+            self.log('offs x=%.3f\ty=%.3f\tth=%.3f'%(xoff,yoff,thetaoff))
 
     def cb_image_in(self, msg):
         if self.resetting == True: return
         if self.is_shutdown: return
         # TODO Change to debug level
-        self.log('Received image.', 'info')
-
+        if self.verbose:
+            self.log('Received image.', 'info')
         tk = TimeKeeper(msg)
 
         if self.parametersChanged:

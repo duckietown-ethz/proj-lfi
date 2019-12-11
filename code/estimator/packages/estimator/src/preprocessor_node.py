@@ -88,7 +88,8 @@ class PreprocessorNode(DTROS):
     def cb_image_in(self, msg):
         if not self.is_shutdown and self.pcm != None:
             # TODO Change to debug level
-            self.log('Received image.', 'info')
+            if self.verbose:
+                self.log('Received image.', 'info')
 
             if self.parametersChanged:
                 self.log('Parameters changed.', 'info')

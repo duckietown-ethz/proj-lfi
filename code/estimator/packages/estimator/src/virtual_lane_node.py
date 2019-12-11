@@ -85,7 +85,8 @@ class VirtualLaneNode(DTROS):
         '''
 
         # TODO Change to debug level
-        self.log('Received intersection pose.')
+        if self.verbose:
+            self.log('Received intersection pose.')
 
         if self.parametersChanged:
             self.log('Parameters changed.', 'info')
@@ -108,8 +109,9 @@ class VirtualLaneNode(DTROS):
 
         # compute distance d and angle phi, same as in lane following
         d, phi, curv = self.relative_pose(int_pose, track, tangent_angle, curvature)
-        self.log("distance: " + str(d))
-        self.log("angle: " + str(phi))
+        if self.verbose:
+            self.log("distance: " + str(d))
+            self.log("angle: " + str(phi))
 
         # convert to LanePose() message
         radius = track[-1][1]
