@@ -56,6 +56,11 @@ rostopic pub -1 /theducknight/coordinator_node/intersection_go duckietown_msgs/B
 # INT_CONTR -> LF
 rostopic pub -1 /theducknight/intersection_navigation_node/intersection_done duckietown_msgs/BoolStamped {} True
 
+rostopic pub -1 /theducknight/localization_node/reset std_msgs/Bool True
+
+rostopic pub -1 /theducknight/camera_node/loop std_msgs/Bool True
+rosparam set /theducknight/localization_node/verbose True
+
 # DISABLE CAR CMD (faster than shutting down the car-interface...)
 rosservice call /theducknight/car_cmd_switch_node/switch False
 
