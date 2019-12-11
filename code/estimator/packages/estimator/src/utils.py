@@ -16,14 +16,16 @@ def read_image(image_msg):
         return None
 
 
-def publish_image(bridge, publisher, image):
+def publish_image(bridge, publisher, image, header = None):
     try:
         image_msg = bridge.cv2_to_compressed_imgmsg(image, dst_format = "jpg")
     except CvBridgeError as e:
         rospy.logerr(e)
         return
-
-    image_msg.header.stamp = rospy.Time.now()
+    if header == None:
+        image_msg.header.stamp = rospy.Time.now()
+    else:
+        image_msg.header = header
     publisher.publish(image_msg)
 
 

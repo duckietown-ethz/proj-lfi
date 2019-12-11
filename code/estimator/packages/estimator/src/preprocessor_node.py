@@ -120,7 +120,7 @@ class PreprocessorNode(DTROS):
                 return
 
             img_out = img_ai
-            utils.publish_image(self.bridge, self.pub_image_out, img_out)
+            utils.publish_image(self.bridge, self.pub_image_out, img_out, msg.header)
 
 
     def calculate_new_parameters(self, event):

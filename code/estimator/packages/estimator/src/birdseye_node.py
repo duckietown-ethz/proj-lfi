@@ -66,7 +66,7 @@ class BirdseyeNode(DTROS):
             img_sharpened = cv2.addWeighted(img_warped, 1.5, img_blurred, -0.5, 0)
 
             img_out = img_sharpened
-            utils.publish_image(self.bridge, self.pub_image_out, img_out)
+            utils.publish_image(self.bridge, self.pub_image_out, img_out, msg.header)
 
 
     # TODO Make this function work if the horizon has been cut off.
