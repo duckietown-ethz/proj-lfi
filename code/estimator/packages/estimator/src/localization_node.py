@@ -37,6 +37,8 @@ class LocalizationNode(DTROS):
         rospy.set_param('~omega_factor', 1)
         self.parameters['~omega_factor'] = 1
 
+        rospy.set_param('~stop_time', 2)
+        self.parameters['~stop_time'] = 2
 
         rospy.set_param('~integration_enabled', True)
         self.parameters['~integration_enabled'] = True
@@ -90,6 +92,11 @@ class LocalizationNode(DTROS):
         if fsm_state_msg.state == "INTERSECTION_COORDINATION":
             self.log('Setting up for intersection')
             self.reset()
+        # this is just a Hack so I don't have to do it manually
+        msg = BoolStamped()
+        msg.data = True
+        rospy.sleep(self.stop_time)
+        self.intersection_go.publish(msg)
 
     def cbSwitch(self, switch_msg):
         self.log('Switch ' + str(switch_msg.data))
