@@ -34,11 +34,12 @@ class LocalizationNode(DTROS):
         # Initialize parameters
         self.parameters['~verbose'] = None
 
-        rospy.set_param('~omega_factor', 0.1)
-        self.parameters['~omega_factor'] = 0.1
+        rospy.set_param('~omega_factor', 1)
+        self.parameters['~omega_factor'] = 1
 
-        rospy.set_param('~integration_enabled', False)
-        self.parameters['~integration_enabled'] = False
+
+        rospy.set_param('~integration_enabled', True)
+        self.parameters['~integration_enabled'] = True
 
         self.parameters['/{}/birdseye_node/image_size'.format(self.veh_name)] = None
         self.parameters['~start_x'] = None
@@ -65,13 +66,15 @@ class LocalizationNode(DTROS):
         self.pub_stoplines_predicted = self.publisher('~stoplines_predicted', PoseArray, queue_size=1)
         self.pub_pose_estimates = self.publisher('~pose_estimates', PoseArray, queue_size=1)
         self.pub_best_pose_estimate = self.publisher('~best_pose_estimate', PoseStamped, queue_size=1)
-
+        # XXX:
+        self.intersection_go = self.publisher('/{}/coordinator_node/intersection_go'.format(self.veh_name), BoolStamped, queue_size=1)
 
         self.bridge = CvBridge()
 
         self.pose = None
         self.pose_in = None
         self.integrator_offset = None
+        self.integrated_pose = None
 
         self.last_thetain = None # for simulating inertia
 
@@ -117,16 +120,17 @@ class LocalizationNode(DTROS):
         self.log('Initialized.')
 
     def cb_pose_in(self, pose2d_in):
-        if not self.parameters['~integration_enabled']: return
         self.pose_in = pose2d_in
         if self.integrator_offset is None:
             self.update_integrator_offset()
         else:
-            self.pose = self.correct(pose2d_in)
-            self.pub_pose()
+            self.integrated_pose = self.correct(pose2d_in)
 
     def pub_pose(self):
         self.pub_best_pose_estimate.publish(self.pose)
+
+    def pub_integrated_pose(self):
+        self.pub_best_pose_estimate.publish(self.integrated_pose)
 
     def cb_reset(self, msg):
         do_reset = msg.data
@@ -156,9 +160,10 @@ class LocalizationNode(DTROS):
         # unpack stuff we'll use
         xin = pose_in.x
         yin = pose_in.y
-        thetain = pose_in.theta # <--- this dude needs some inertia
+        thetain = pose_in.theta # <--- needs some inertia
         # ideally damping should be done by the kinematics node
         #                           how can you expect infinite acceleration!!
+        prev_theta = euler_from_quaternion(utils.quat_to_tuple(self.integrated_pose.pose.orientation))[2]
 
         # for now... I'll just grossly slow it down
         if self.last_thetain is not None:
@@ -207,6 +212,7 @@ class LocalizationNode(DTROS):
         yoff = y - xin*np.sin(thetaoff) - yin*np.cos(thetaoff)
 
         self.integrator_offset = (xoff, yoff, thetaoff)
+        self.integrated_pose = self.pose
 
         if self.verbose:
             self.log('odom x=%.3f\ty=%.3f\tth=%.3f'%(xin,yin,thetain))
@@ -285,6 +291,9 @@ class LocalizationNode(DTROS):
             self.pose.pose = best_pose_estimate
             self.pub_pose()
             self.update_integrator_offset()
+        elif self.parameters['~integration_enabled']:
+            self.integrated_pose.header.stamp = msg.header.stamp
+            self.pub_integrated_pose()
 
         if self.verbose:
             if len(stopline_poses_corrected) > 0:
@@ -339,7 +348,9 @@ class LocalizationNode(DTROS):
         self.image_size_width = image_size['width']
         self.start_x = self.parameters['~start_x']
         self.start_y = self.parameters['~start_y']
+        self.integration_enabled = self.parameters['~integration_enabled']
         self.start_z = self.parameters['~start_z']
+        self.stop_time = self.parameters['~stop_time']
         self.dbscan_eps = self.parameters['~dbscan_eps']
         self.dbscan_min_samples = self.parameters['~dbscan_min_samples']
 
