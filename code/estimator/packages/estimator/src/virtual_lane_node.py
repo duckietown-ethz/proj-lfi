@@ -59,8 +59,10 @@ class VirtualLaneNode(DTROS):
             track_y = rospy.get_param('~yCoords_{}'.format(name))
             tangent_angle = rospy.get_param('~tangentAngle_{}'.format(name))
             curvature = rospy.get_param('~curvature_{}'.format(name))
-
-            track = np.vstack([np.array(track_x), np.array(track_y)]).T
+            track_y_npa = np.array(track_y)
+            if name == 'right':
+                track_y_npa -= 0.1
+            track = np.vstack([np.array(track_x), track_y_npa]).T
             tangent_angle = np.array(tangent_angle)
             curvature = np.array(curvature)
 
