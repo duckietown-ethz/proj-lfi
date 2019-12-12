@@ -1,15 +1,15 @@
 # parameters
-ARG REPO_NAME="proj-lfi-intersection"
+ARG REPO_NAME="dt-core"
 
 # ==================================================>
 # ==> Do not change this code
-#ARG ARCH
-#ARG MAJOR=daffy
-#ARG BASE_TAG=${MAJOR}-${ARCH}
-#ARG BASE_IMAGE=dt-ros-commons
+ARG ARCH
+ARG MAJOR=daffy
+ARG BASE_TAG=${MAJOR}-${ARCH}
+ARG BASE_IMAGE=dt-ros-commons
 
 # define base image
-FROM proj-lfi-core:daffy
+FROM duckietown/${BASE_IMAGE}:${BASE_TAG}
 
 # define repository path
 ARG REPO_NAME
@@ -41,7 +41,7 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
     --workspace ${CATKIN_WS_DIR}/
 
 # define launch script
-COPY ./launch.sh "${REPO_PATH}/"
+#COPY ./launch.sh "${REPO_PATH}/"
 ENV LAUNCHFILE "${REPO_PATH}/launch.sh"
 
 # define command

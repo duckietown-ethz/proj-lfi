@@ -152,11 +152,11 @@ fsm: core
 	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t proj-lfi-$@:$(TAG) "$(CURDIR)/$@"
 
 .PHONY: estimator
-estimator: core
+estimator:
 	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t proj-lfi-$@:$(TAG) "$(CURDIR)/$@"
 
 .PHONY: car-interface
-car-interface: core
+car-interface:
 	docker $(ARG_HOST) build --build-arg ARCH=$(ARCH) -t proj-lfi-$@:$(TAG) "$(CURDIR)/$@"
 
 .PHONY: run_core
