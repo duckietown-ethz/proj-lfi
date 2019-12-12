@@ -65,7 +65,19 @@ rosparam set /theducknight/virtual_lane_node/trajectory left
 # DISABLE CAR CMD (faster than shutting down the car-interface...)
 rosservice call /theducknight/car_cmd_switch_node/switch False
 
-rosparam set /theducknight/camera_node/res_h 120 && rosparam set /theducknight/camera_node/res_w 160
+rosparam set /theducknight/camera_node/res_h 192 && rosparam set /theducknight/camera_node/res_w 256
 rostopic echo --offset /theducknight/lane_controller_node/intersection_navigation_pose/header
 
 /theducknight/lane_controller_node/intersection_navigation_pose
+
+rosparam set /theducknight/camera_node/res_h 192 && rosparam set /theducknight/camera_node/res_w 256
+rosparam set /theducknight/kinematics_node/trim .1
+rosparam set /theducknight/kinematics_node/gain 1
+rosparam set /theducknight/kinematics_node/omega_max 4
+rosparam set /theducknight/kinematics_node/v_bar 0.15
+rosparam set /theducknight/kinematics_node/v_max 1
+rosparam set /theducknight/stop_line_filter_node/off_time 3
+rosparam set /theducknight/virtual_lane_node/trajectory left
+rosparam set /theducknight/localization_node/integration_enabled 1
+rosparam set /theducknight/virtual_lane_node/end_condition_distance 0.5
+rosparam set /theducknight/virtual_lane_node/end_condition_angle_deg 45
