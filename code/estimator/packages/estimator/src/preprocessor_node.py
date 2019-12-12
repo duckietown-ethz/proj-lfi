@@ -111,18 +111,19 @@ class PreprocessorNode(DTROS):
             img_cutoff = img_rectified[cutoff_absolute:,:]
             self.latest_image = img_cutoff
 
-            if self.verbose:
-                utils.publish_image(self.bridge, self.pub_cutoff, img_cutoff)
+            # if self.verbose:
+            #     utils.publish_image(self.bridge, self.pub_cutoff, img_cutoff)
+            #
+            # img_ai = self.ai.apply_color_balance(img_cutoff, self.ai_output_scale)
+            #
+            # if img_ai is None:
+            #     self.calculate_new_parameters(None)
+            #     return
+            #
+            # img_out = img_ai
 
-            img_ai = self.ai.apply_color_balance(img_cutoff, self.ai_output_scale)
-
-            if img_ai is None:
-                self.calculate_new_parameters(None)
-                return
-
-            img_out = img_ai
+            img_out = img_cutoff
             utils.publish_image(self.bridge, self.pub_image_out, img_out, msg.header)
-
 
     def calculate_new_parameters(self, event):
         if self.latest_image is None:

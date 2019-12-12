@@ -55,7 +55,8 @@ rostopic pub -1 /theducknight/stop_line_filter_node/at_stop_line duckietown_msgs
 rostopic pub -1 /theducknight/coordinator_node/intersection_go duckietown_msgs/BoolStamped {} True
 # INT_CONTR -> LF
 rostopic pub -1 /theducknight/intersection_navigation_node/intersection_done duckietown_msgs/BoolStamped {} True
-
+rostopic pub -1 /theducknight/line_detector_node/switch duckietown_msgs/BoolStamped {} True
+line_detector_node/switch
 rostopic pub -1 /theducknight/localization_node/reset std_msgs/Bool True
 
 rostopic pub -1 /theducknight/camera_node/loop std_msgs/Bool True
@@ -65,5 +66,6 @@ rosparam set /theducknight/virtual_lane_node/trajectory left
 rosservice call /theducknight/car_cmd_switch_node/switch False
 
 rosparam set /theducknight/camera_node/res_h 120 && rosparam set /theducknight/camera_node/res_w 160
+rostopic echo --offset /theducknight/lane_controller_node/intersection_navigation_pose/header
 
 /theducknight/lane_controller_node/intersection_navigation_pose

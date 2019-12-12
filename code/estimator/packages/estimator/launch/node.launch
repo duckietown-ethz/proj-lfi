@@ -4,8 +4,7 @@
 	<group ns="$(arg veh)">
 		<node pkg="estimator" type="preprocessor_node.py" name="preprocessor_node" output="screen">
 			<rosparam command="load" file="$(find estimator)/config/preprocessor_node/$(arg param_file_name).yaml"/>
-
-			<remap from="preprocessor_node/image_in/compressed" to="camera_node/image/compressed"/>
+			<remap from="preprocessor_node/image_in/compressed" to="anti_instagram_node/corrected_image/compressed"/>
 			<remap from="preprocessor_node/camera_info" to="camera_node/camera_info"/>
 		</node>
 
