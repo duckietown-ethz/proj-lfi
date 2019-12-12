@@ -171,7 +171,6 @@ class VirtualLaneNode(DTROS):
 
         if switch.data:
             self.log("SWITCH BACK TO LANE FOLLOWING!!")
-            
         # publish lane pose msg
         closest_pos = track[idx_min_dist]
         closest_angle = tangent_angle[idx_min_dist]
