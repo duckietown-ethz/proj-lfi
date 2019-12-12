@@ -3,10 +3,12 @@
 import cv2
 import numpy as np
 import rospy
-
+from duckietown_msgs.msg import BoolStamped, FSMState
 from duckietown import DTROS
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
+from math import floor
+from image_geometry import PinholeCameraModel
 
 import utils
 from config_loader import get_camera_info_for_robot, get_homography_for_robot
@@ -20,30 +22,70 @@ class BirdseyeNode(DTROS):
         super(BirdseyeNode, self).__init__(node_name=node_name)
         self.veh_name = rospy.get_namespace().strip("/")
 
+        # XXX: do we really need a member variable for every field in the dict?
+        self.active = True
+        self.fsm_state = None
         self.parameters['~verbose'] = None
+        self.rectify = None
+        self.parameters['~rectify'] = None
+        self.image_size = None
+        self.parameters['~image_size'] = None
+        self.top_cutoff_percent = None
+        self.parameters['~top_cutoff_percent'] = None
+
+
         self.updateParameters()
         self.refresh_parameters()
 
         # Load camera calibration
         homography = get_homography_for_robot(self.veh_name)
-        camera_info = get_camera_info_for_robot(self.veh_name)
-        self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
+        self.camera_info = get_camera_info_for_robot(self.veh_name)
+        self.pcm = None
+
+        self.scaled_homography = ScaledHomography(homography, self.camera_info.height, self.camera_info.width)
 
         # Subscribers
-        buffer_size = 294912 # TODO Set this dynamically based on the image size.
-        self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
+        self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.cb_camera_info, queue_size=1)
+
+        self.sub_switch = self.subscriber("~switch", BoolStamped, self.cbSwitch, queue_size=1)
+        self.sub_fsm = self.subscriber("~fsm_mode", FSMState, self.cbFSM, queue_size=1)
 
         # Publishers
-        self.pub_warped = self.publisher('~warped/compressed', CompressedImage, queue_size=1)
+        self.pub_rectified = self.publisher('~verbose/rectified/compressed', CompressedImage, queue_size=1)
         self.pub_image_out = self.publisher('~image_out/compressed', CompressedImage, queue_size=1)
 
         self.bridge = CvBridge()
 
-        self.log("Initialized")
+        self.log('Waiting for camera model.')
 
+    def cbFSM(self, msg):
+        self.fsm_state = msg.state
+
+    def cbSwitch(self, switch_msg):
+        self.log('Switch ' + str(switch_msg.data))
+
+        self.active = switch_msg.data
+
+    def cb_camera_info(self, msg):
+        # XXX commented out because I am setting the camera resolution manually
+        #if self.image_size_width != msg.width or self.image_size_height != msg.height:
+        #   return
+        self.log('Received camera info.', 'info')
+        self.pcm = PinholeCameraModel()
+        self.pcm.fromCameraInfo(msg)
+
+        # This topic subscription is only needed initially, so it can be unregistered.
+        self.sub_camera_info.unregister()
+
+        buffer_size = msg.width * msg.height * 3 * 2
+        self.log('Buffer size set to {}.'.format(buffer_size), 'info')
+        # Now the node can proceed to process images
+        self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
+
+        self.log('Initialized.')
 
     def cb_image_in(self, msg):
-        if not self.is_shutdown:
+        if self.active and not self.is_shutdown:
             # TODO Change to debug level
             if self.verbose:
                 self.log('Received image.', 'info')
@@ -53,20 +95,23 @@ class BirdseyeNode(DTROS):
                 self.refresh_parameters()
                 self.parametersChanged = False
 
-            img_original = utils.read_image(msg)
-            if img_original is None:
-                return
+            img = utils.read_image(msg)
+            if img is None:
+                self.log('Got empty image msg.')
+            height, width, depth = img.shape
 
-            img_warped = self.camera_img_to_birdseye(img_original)
+            if self.rectify:
+                #img_temp = np.zeros((height, width, depth))
+                img_temp = img.copy()
+                self.pcm.rectifyImage(img_temp, img_temp)
+                img = img_temp
+                if self.verbose:
+                    utils.publish_image(self.bridge, self.pub_rectified, img)
 
-            if self.verbose:
-                utils.publish_image(self.bridge, self.pub_warped, img_warped)
+            img = img[self.cutoff_absolute:,:]
 
-            # TODO Make these values parameters
-            img_blurred = cv2.GaussianBlur(img_warped, (0,0), 3)
-            img_sharpened = cv2.addWeighted(img_warped, 1.5, img_blurred, -0.5, 0)
+            img_out = self.camera_img_to_birdseye(img)
 
-            img_out = img_sharpened
             utils.publish_image(self.bridge, self.pub_image_out, img_out, msg.header)
 
 
@@ -86,13 +131,16 @@ class BirdseyeNode(DTROS):
 
     def refresh_parameters(self):
         self.verbose = self.parameters['~verbose']
-
+        image_size = self.parameters['~image_size']
+        self.image_size_height = image_size['height']
+        self.image_size_width = image_size['width']
+        self.top_cutoff_percent = self.parameters['~top_cutoff_percent']
+        self.rectify = self.parameters['~rectify']
+        self.cutoff_absolute = int(floor(self.image_size_height * self.top_cutoff_percent / 100.0))
 
     def onShutdown(self):
         self.log("Stopping birdseye_node.")
-
         super(BirdseyeNode, self).onShutdown()
-
 
 if __name__ == '__main__':
     # Initialize the node

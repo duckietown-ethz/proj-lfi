@@ -9,7 +9,7 @@ from duckietown import DTROS
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from geometry_msgs.msg import Point, Quaternion, PoseStamped, PoseArray
 from std_msgs.msg import Bool
-from duckietown_msgs.msg import Pose2DStamped, FSMState
+from duckietown_msgs.msg import Pose2DStamped, FSMState, BoolStamped
 from cv_bridge import CvBridge, CvBridgeError
 
 
@@ -30,7 +30,7 @@ class LocalizationNode(DTROS):
         # Initialize the DTROS parent class
         super(LocalizationNode, self).__init__(node_name=node_name)
         self.veh_name = rospy.get_namespace().strip("/")
-
+        self.active = True
         # Initialize parameters
         self.parameters['~verbose'] = None
 
@@ -40,7 +40,7 @@ class LocalizationNode(DTROS):
         rospy.set_param('~integration_enabled', False)
         self.parameters['~integration_enabled'] = False
 
-        self.parameters['/{}/preprocessor_node/image_size'.format(self.veh_name)] = None
+        self.parameters['/{}/birdseye_node/image_size'.format(self.veh_name)] = None
         self.parameters['~start_x'] = None
         self.parameters['~start_y'] = None
         self.parameters['~start_z'] = None
@@ -53,6 +53,7 @@ class LocalizationNode(DTROS):
         self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.cb_camera_info, queue_size=1)
         self.sub_reset = self.subscriber('~reset', Bool, self.cb_reset, queue_size=1)
         self.sub_pose_in = self.subscriber('~open_loop_pose_estimate', Pose2DStamped, self.cb_pose_in, queue_size=1)
+        self.sub_switch = self.subscriber("~switch", BoolStamped, self.cbSwitch, queue_size=1)
 
         #TODO: listen to FSM mode and call reset when we enter NAVIGATION_COORDINATION
         self.sub_fsm = self.subscriber('~mode', FSMState, self.cb_mode, queue_size=1)
@@ -87,27 +88,33 @@ class LocalizationNode(DTROS):
             self.log('Setting up for intersection')
             self.reset()
 
+    def cbSwitch(self, switch_msg):
+        self.log('Switch ' + str(switch_msg.data))
+
+        self.active = switch_msg.data
+
     def cb_camera_info(self, msg):
-        if self.image_size_width == msg.width and self.image_size_height == msg.height:
-            self.log('Received camera info.', 'info')
-            self.pcm = PinholeCameraModel()
-            self.pcm.fromCameraInfo(msg)
-            homography = get_homography_for_robot(self.veh_name)
-            camera_info = get_camera_info_for_robot(self.veh_name)
-            self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
-            self.model = Intersection4wayModel(self.pcm, self.scaled_homography)
-            self.stopline_detector = StoplineDetector(self.scaled_homography, point_reduction_factor=1)
-            self.stopline_filter = StoplineFilter(min_quality=0.5, policy='weighted_avg')
+        # if self.image_size_width != msg.width or self.image_size_height != msg.height:
+        #     return
+        self.log('Received camera info.', 'info')
+        self.pcm = PinholeCameraModel()
+        self.pcm.fromCameraInfo(msg)
+        homography = get_homography_for_robot(self.veh_name)
+        camera_info = get_camera_info_for_robot(self.veh_name)
+        self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
+        self.model = Intersection4wayModel(self.pcm, self.scaled_homography)
+        self.stopline_detector = StoplineDetector(self.scaled_homography, point_reduction_factor=1)
+        self.stopline_filter = StoplineFilter(min_quality=0.5, policy='weighted_avg')
 
-            # This topic subscription is only needed initially, so it can be unregistered.
-            self.sub_camera_info.unregister()
-            self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.scaled_homography.cb_camera_info, queue_size=1)
-            buffer_size = msg.width * msg.height * 3 * 2
-            self.log('Buffer size set to {}.'.format(buffer_size), 'info')
-            # Now the node can proceed to process images
-            self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
+        # This topic subscription is only needed initially, so it can be unregistered.
+        self.sub_camera_info.unregister()
+        self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.scaled_homography.cb_camera_info, queue_size=1)
+        buffer_size = msg.width * msg.height * 3 * 2
+        self.log('Buffer size set to {}.'.format(buffer_size), 'info')
+        # Now the node can proceed to process images
+        self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
 
-            self.log('Initialized.')
+        self.log('Initialized.')
 
     def cb_pose_in(self, pose2d_in):
         if not self.parameters['~integration_enabled']: return
@@ -218,6 +225,7 @@ class LocalizationNode(DTROS):
             self.log('Parameters changed.', 'info')
             self.refresh_parameters()
             self.parametersChanged = False
+        if not self.active: return
 
         tk.completed('parameter check')
         img_original = utils.read_image(msg)
@@ -232,7 +240,7 @@ class LocalizationNode(DTROS):
 
         # Filtering red
         red_mask, dbg_image = self.stopline_detector.filter_red(img_original, verbose=self.verbose, tk=tk)
-        if dbg_image is not None:
+        if self.verbose and dbg_image is not None:
             utils.publish_image(self.bridge, self.pub_red_filter, dbg_image)
 
         # Clustering red points
@@ -326,7 +334,7 @@ class LocalizationNode(DTROS):
 
     def refresh_parameters(self):
         self.verbose = self.parameters['~verbose']
-        image_size = self.parameters['/{}/preprocessor_node/image_size'.format(self.veh_name)]
+        image_size = self.parameters['/{}/birdseye_node/image_size'.format(self.veh_name)]
         self.image_size_height = image_size['height']
         self.image_size_width = image_size['width']
         self.start_x = self.parameters['~start_x']
@@ -337,8 +345,7 @@ class LocalizationNode(DTROS):
 
 
     def onShutdown(self):
-        self.log("Stopping preprocessor_node.")
-
+        self.log("Stopping localization_node.")
         super(LocalizationNode, self).onShutdown()
 
 
