@@ -7,7 +7,7 @@
 	<!-- start basic args -->
 	<include file="$(find duckietown_demos)/launch/master.launch">
 		<arg name="veh" value="$(arg veh)"/>
-		<arg name="visualization" default="true" />
+		<arg name="visualization" default="false" />
 		<!--arg name="verbose" value="$(arg verbose)" /-->
     <arg name="/camera/raw" default="false" />
 		<arg name="param_file_name" default="default" />
@@ -19,7 +19,6 @@
 		<arg name="vehicle_avoidance" default="false"/>
 		<arg name="LED" default="false" />
 		<arg name="fsm_file_name" default="proj_lfi" />
-
 		<arg name="apriltags" default="false"/>
 		<arg name="/camera/raw/rect" default="false"/>
 		<arg name="fsm" default="true"/>
