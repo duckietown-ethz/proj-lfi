@@ -1,4 +1,0 @@
-$ dts devel build -f --arch arm32v7 -H "...".local
-add if necessary --ignore-watchtower
-$ docker -H wlan.local run --env ROS_MASTER_URI=http://"...":11311/ --env ROS_IP=http://"..." --env VEHICLE_NAME="..." --env MAP_NAME="...".yaml -it --privileged -v /data:/data --rm --net host duckietown/cra1-ar-calibration-pattern:v1-arm32v7
-

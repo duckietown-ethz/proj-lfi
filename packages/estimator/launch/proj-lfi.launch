@@ -1,0 +1,67 @@
+<launch>
+	<!-- This launch file is an extension of the lane following demo launch file -->
+	<arg name="param_file_name" default="default" doc="Specify a param file." />
+
+	<arg name="veh" default="$(env VEHICLE_NAME)"/>
+	<arg name="ai_trafo_mode" default="cb" doc="'cb' for colo balance only; 'both' for color balance and linear trafo"/>
+	<arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
+	<arg name="verbose" default="false"/>
+
+	<!-- start basic args -->
+	<include file="$(find duckietown_demos)/launch/master.launch">
+		<arg name="veh" value="$(arg veh)"/>
+		<arg name="visualization" default="false" />
+		<arg name="/camera/raw" default="false" />
+		<arg name="param_file_name" default="default" />
+		<arg name="line_detector_param_file_name" default="default" />
+		<arg name="anti_instagram" default="true" />
+		<arg name="ai_trafo_mode" value="$(arg ai_trafo_mode)"/>
+		<arg name="ai_interval" value="$(arg ai_interval)"/>
+		<arg name="/lane_following/stop_line_filter" default="true" />
+		<arg name="vehicle_avoidance" default="false"/>
+		<arg name="LED" default="false" />
+		<arg name="fsm_file_name" default="proj_lfi" />
+		<arg name="apriltags" default="false"/>
+		<arg name="/camera/raw/rect" default="false"/>
+		<arg name="fsm" default="true"/>
+		<arg name="/navigation/intersection_navigation" default="false"/>
+	</include>
+
+	<group ns="$(arg veh)">
+
+		<!-- Node to publish the ground projection image, images come from anti_instagram
+		 and must not be scaled as it relies on the camera_info from camera_node -->
+		<node pkg="estimator" type="birdseye_node.py" name="birdseye_node" output="screen">
+			<rosparam command="load" file="$(find estimator)/config/birdseye_node/$(arg param_file_name).yaml"/>
+			<remap from="birdseye_node/camera_info" to="camera_node/camera_info"/>
+			<remap from="birdseye_node/image_in/compressed" to="anti_instagram_node/corrected_image/compressed"/>
+		</node>
+
+		<!-- This node processes the ground projected image to estimate the bots pose
+		 with respect to the intersection -->
+		<node pkg="estimator" type="localization_node.py" name="localization_node" output="screen">
+			<rosparam command="load" file="$(find estimator)/config/localization_node/$(arg param_file_name).yaml"/>
+			<remap from="localization_node/image_in/compressed" to="birdseye_node/image_out/compressed"/>
+			<remap from="localization_node/camera_info" to="camera_node/camera_info"/>
+			<remap from="localization_node/mode" to="fsm_node/mode"/>
+		  <!-- The integrated lane pose helps cover gaps if perception fails -->
+			<remap from="localization_node/open_loop_pose_estimate" to="velocity_to_pose_node/pose"/>
+		</node>
+
+		<!-- This node takes the pose in the intersection frame and converts into a
+	 	 lane pose to be used by the lane_following_controller -->
+		<node pkg="estimator" name="virtual_lane_node" type="virtual_lane_node.py" output="screen">
+			<!-- load the generated virtual lane trajectories to traverse the intersection -->
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/straight.yaml"/>
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/left.yaml"/>
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/right.yaml"/>
+
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/$(arg param_file_name).yaml"/>
+			<remap from="virtual_lane_node/lane_pose" to="lane_controller_node/intersection_navigation_pose"/>
+			<remap from="virtual_lane_node/intersection_pose" to="localization_node/best_pose_estimate"/>
+			<remap from="virtual_lane_node/intersection_done" to="logic_gate_node/intersection_done_and_deep_lane_off"/>
+		</node>
+
+	</group>
+
+</launch>

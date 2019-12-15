@@ -80,4 +80,36 @@ rosparam set /theducknight/stop_line_filter_node/off_time 3
 rosparam set /theducknight/virtual_lane_node/trajectory left
 rosparam set /theducknight/localization_node/integration_enabled 1
 rosparam set /theducknight/virtual_lane_node/end_condition_distance 0.5
-rosparam set /theducknight/virtual_lane_node/end_condition_angle_deg 45
+rosparam set /theducknight/virtual_lane_node/end_condition_angle_deg 20
+
+rosparam set /theducknight/lane_controller_node/use_feedforward_part 1
+rosparam set /theducknight/lane_controller_node/omega_min 4
+rosparam set /theducknight/lane_controller_node/omega_max 4
+
+rosparam get /theducknight/lane_controller_node
+
+dts duckiebot demo --demo_name all_drivers --duckiebot_name theducknight --package_name duckiebot_interface --image duckietown/dt-duckiebot-interface:daffy --debug
+dts duckiebot demo --demo_name all --duckiebot_name theducknight --package_name car_interface --image proj-lfi-car-interface:daffy --debug
+dts duckiebot demo --demo_name proj-lfi --duckiebot_name theducknight --package_name duckietown_demos --image duckietown/proj-lfi:master-arm32v7 --debug
+dts start_gui_tools theducknight --base_image duckietown/dt-core:daffy-amd64
+
+## STRAIGHT:
+rosparam get /theducknight/kinematics_node
+{baseline: 0.1, gain: 1.0, k: 27.0, limit: 1.0, omega_max: 8.0, radius: 0.0318, trim: 0.1,
+  v_bar: 0.15, v_max: 1.0}
+rosparam get /theducknight/lane_controller_node
+{d_offset: 0.0, d_ref: 0, d_thres: 0.2615, k_Id: 1, k_Iphi: 0.0, k_d: -3.5, k_theta: -1,
+  min_rad: 0.06, object_detected: 0, omega_ff: 0, omega_max: 999, omega_min: -999,
+  phi_ref: 0, theta_thres: 0.523, use_feedforward_part: 1, use_rad_lim: false, use_radius_limit: true,
+  v_bar: 0.23, wheel_distance: 0.103}
+rosparam get /theducknight/virtual_lane_node
+	{ ...
+		end_condition_angle_deg: 30
+		end_condition_distance: 0.28
+	  ... }
+
+# RIGHT:
+rosparam set /theducknight/kinematics_node/omega_max 4
+
+#LEFT
+rosparam set /theducknight/virtual_lane_node/end_condition_angle_deg 30
