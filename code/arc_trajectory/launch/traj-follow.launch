@@ -1,7 +1,0 @@
-<launch>
-
-  <node pkg="my_package" name="trajectory_following_node" type="trajectory_following.py" output="screen">
-    <rosparam command="load" file="$(find my_package)/maps/left_turn.yaml"/>
-  </node>
-
-</launch>
