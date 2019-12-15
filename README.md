@@ -63,21 +63,21 @@ rostopic echo --offset /theducknight/lane_controller_node/intersection_navigatio
 ```
 
 ## TODO
-- Test on different duckiebots
-- Are we using the omega feedforward? (I believe yes)
-- Figure out why nodes keep using CPU when they are set to inactive. Are they being set to inactive? (maybe fsm callbacks are buggy)
-- Make a new branch to be handed in with cleaner code and a single container for dt-core and estimator. I was told today that if you extend the dt core base image you can overwrite existing packages by using the same name, which is what they actually want us to do.
-- Make everything more "duckietown compliant" so TAs like us. I'd avoid the makefile in the hand in.
+- Test on different duckiebots **(WORKS)**
+- Are we using the omega feedforward? (I believe yes) **(YES)**
+- Figure out why nodes keep using CPU when they are set to inactive. Are they being set to inactive? (maybe fsm callbacks are buggy) **(FIXED)**
+- Make a new branch to be handed in with cleaner code and a single container for dt-core and estimator. I was told today that if you extend the dt core base image you can overwrite existing packages by using the same name, which is what they actually want us to do. **(WORKS BUT REPO_NAME HAS TO BE SET TO "dt_core" TO OVERWRITE)**
+- Make everything more "duckietown compliant" so TAs like us. I'd avoid the makefile in the hand in. **(DONE, USING DEMO FRAMEWORK)**
 - Automate camera resolution change similarly to how we were setting the scale factor in `anti-instagram`
 - automatically select **end conditions** based on direction to take:
 Distance should be at most .3m for going straight.
 Angle should be at most 20° for going left or right.
 I've been trying to keep the values large to ensure we release control as soon as possible.
 - Do something about the translated trajectory for right turns
-- Maybe tune the lane PID?
-- Get some kind of cheap visualization for what is going on. Like verbose but without the image. I know we have some rviz tools but I haven't been using them so I don't know if we can show them in the presentation.
-- Find and specify the requirements of our solution and show how we fail is they are not respected. (eg calibration, other red things in sight, wrong resolution)
-- GET THE OLD INDEFINITE NAVIGATION GOING TO SHOW HOW MUCH BETTER OURS IS!!!!
+- Maybe tune the lane PID? **(IT'S NOT PID, IT's a P and a PI, best thing we can do is set omega_max to 4.2 in kinematics_node)**
+- Get some kind of cheap visualization for what is going on. Like verbose but without the image. I know we have some rviz tools but I haven't been using them so I don't know if we can show them in the presentation. **(DONE, RVIZ is not TOO expensive)**
+- Find and specify the requirements of our solution and show how we fail is they are not respected. (eg calibration, other red things in sight, wrong resolution) **(PARTLY DONE, calibration is quite irrelevant, trim needs to be decent, duckie beeks are not a problem, we need to have at least one unobstructed stopline, we can tolerate some duckies sitting on them, we are quite robust to start position but there is obviously a limit. One delicate thing is starting far right before a right turn, not turning in place is a tough rule)**
+- GET THE OLD INDEFINITE NAVIGATION GOING TO SHOW HOW MUCH BETTER OURS IS!!!! **(DONE, and indeed it is bad, but I didn't really try to calibrate my robot that well)**
 
 ## Possible improvements
 we can prob mention these in the presentation for next years proj-lfi
