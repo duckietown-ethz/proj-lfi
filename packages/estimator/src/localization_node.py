@@ -8,7 +8,7 @@ import rospkg
 from duckietown import DTROS
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from geometry_msgs.msg import Point, Quaternion, PoseStamped, PoseArray
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64
 from duckietown_msgs.msg import Pose2DStamped, FSMState, BoolStamped
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -68,6 +68,7 @@ class LocalizationNode(DTROS):
         self.pub_stoplines_predicted = self.publisher('~stoplines_predicted', PoseArray, queue_size=1)
         self.pub_pose_estimates = self.publisher('~pose_estimates', PoseArray, queue_size=1)
         self.pub_best_pose_estimate = self.publisher('~best_pose_estimate', PoseStamped, queue_size=1)
+        self.pub_estimate_quality = self.publisher('~best_estimate_quality', Float64, queue_size=1)
         # XXX:
         self.intersection_go = self.publisher('/{}/coordinator_node/intersection_go'.format(self.veh_name), BoolStamped, queue_size=1)
 
@@ -135,6 +136,12 @@ class LocalizationNode(DTROS):
 
     def pub_pose(self):
         self.pub_best_pose_estimate.publish(self.pose)
+
+    def pub_quality(self, qual):
+        msg = Float64()
+        msg.data = qual
+        msg.header
+        self.pub_estimate_quality.publish(msg)
 
     def pub_integrated_pose(self):
         self.pub_best_pose_estimate.publish(self.integrated_pose)
@@ -290,6 +297,9 @@ class LocalizationNode(DTROS):
             self.pose.pose = best_pose_estimate
             self.pub_pose()
             self.update_integrator_offset()
+            if self.verbose:
+                qual = self.stopline_filter.get_estimate_quality()
+                self.pub_quality(qual)
         elif self.parameters['~integration_enabled'] and self.integrated_pose is not None:
             self.integrated_pose.header.stamp = msg.header.stamp
             self.pub_integrated_pose()
