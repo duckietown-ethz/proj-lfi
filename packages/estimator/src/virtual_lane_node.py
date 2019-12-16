@@ -27,9 +27,9 @@ class VirtualLaneNode(DTROS):
         super(VirtualLaneNode, self).__init__(node_name=node_name)
         self.veh_name = rospy.get_namespace().strip("/")
 
-        # Initialize parameters
         self.trajectories = self.load_trajectories(['straight', 'left', 'right'])
 
+        # Initialize parameters
         self.parameters['~verbose'] = None
         self.parameters['~trajectory'] = None
         self.parameters['~end_distance_left'] = None
@@ -39,12 +39,14 @@ class VirtualLaneNode(DTROS):
         self.parameters['~end_distance_right'] = None
         self.parameters['~end_angle_deg_right'] = None
         self.parameters['~y_offset_right'] = None
-
+        self.y_offset_right = 0
         self.end_condition_distance = None
         self.end_condition_angle_deg = None
 
         self.updateParameters()
         self.refresh_parameters()
+
+
 
         # Publishers
         self.pub_lanepose = rospy.Publisher("~lane_pose", LanePose, queue_size=1)
@@ -68,8 +70,6 @@ class VirtualLaneNode(DTROS):
             tangent_angle = rospy.get_param('~tangentAngle_{}'.format(name))
             curvature = rospy.get_param('~curvature_{}'.format(name))
             track_y_npa = np.array(track_y)
-            if name == 'right':
-                track_y_npa -= self.parameters['~y_offset_right']
             track = np.vstack([np.array(track_x), track_y_npa]).T
             tangent_angle = np.array(tangent_angle)
             curvature = np.array(curvature)
@@ -111,7 +111,6 @@ class VirtualLaneNode(DTROS):
         d, phi, curv = self.relative_pose(int_pose, track, tangent_angle, curvature)
 
         # convert to LanePose() message
-        radius = track[-1][1]
         lane_pose = LanePose()
         lane_pose.header.stamp = int_pose.header.stamp
         lane_pose.d = d
@@ -138,7 +137,6 @@ class VirtualLaneNode(DTROS):
         :param pose: current position of the duckiebot in the intersection-stop-line frame
         :return: distance d and angle phi compared to the optimal trajectory --> same as for line following
         '''
-
         position, orientation = utils.pose_to_tuple(pose.pose)
         _, _, yaw = euler_from_quaternion(orientation)
         car_pos = np.array(position[0:2])
@@ -268,19 +266,22 @@ class VirtualLaneNode(DTROS):
     def refresh_parameters(self):
         self.verbose = self.parameters['~verbose']
         self.trajectory = self.parameters['~trajectory']
-        if self.trajectory == 'right'
+        if self.trajectory == 'right':
             self.end_condition_distance = self.parameters['~end_distance_right']
             self.end_condition_angle_deg = self.parameters['~end_angle_deg_right']
-        elif self.trajectory == 'straight'
+        elif self.trajectory == 'straight':
             self.end_condition_distance = self.parameters['~end_distance_straight']
             self.end_condition_angle_deg = self.parameters['~end_angle_deg_straight']
-        elif self.trajectory == 'left'
+        elif self.trajectory == 'left':
             self.end_condition_distance = self.parameters['~end_distance_left']
             self.end_condition_angle_deg = self.parameters['~end_angle_deg_left']
-
+        if self.parameters['~y_offset_right'] != self.y_offset_right:
+            delta = self.parameters['~y_offset_right'] - self.y_offset_right
+            self.trajectories['right']['track'] += [0, delta]
+            self.y_offset_right = self.parameters['~y_offset_right']
 
 if __name__ == '__main__':
     # Initialize the node
-    camera_node = VirtualLaneNode(node_name='trajectory')
+    node = VirtualLaneNode(node_name='trajectory')
     # Keep it spinning to keep the node alive
     rospy.spin()

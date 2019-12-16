@@ -2,7 +2,7 @@ import numpy as np
 import rospy
 from duckietown_utils.jpg import bgr_from_jpg
 from cv_bridge import CvBridge, CvBridgeError
-from geometry_msgs.msg import Quaternion, PoseStamped, TransformStamped, Pose
+from geometry_msgs.msg import Quaternion, PoseStamped, TransformStamped, Pose, Point
 from tf.transformations import quaternion_inverse, quaternion_multiply
 from tf import TransformerROS
 
