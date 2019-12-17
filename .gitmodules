@@ -1,4 +1,3 @@
-
 [submodule "car-interface"]
 	path = car-interface
 	url = https://github.com/leopoldsedev/proj-lfi-car-interface.git
