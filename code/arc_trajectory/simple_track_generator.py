@@ -143,6 +143,16 @@ def main():
     gen.addArc(radius_right, 0, radius_right, np.pi, np.pi/2, 200)
     gen.addLine(radius_right, radius_right, 0.10 + radius_right, radius_right, 200)
 
+    # right turn 2 --> larger angle
+    radius_right1 = radius_right + 0.1
+    gen.addLine(0, -0.30, 0, -0.1, 200)
+    gen.addArc(radius_right1, -0.1, radius_right1, np.pi, np.pi/2, 200)
+
+    # right turn 2 --> largest angle
+    radius_right2 = 0.1025/(1-1/np.sqrt(2))
+    gen.addLine(0, -0.30, 0, -radius_right2/np.sqrt(2)-0.024, 200)
+    gen.addArc(radius_right2, -radius_right2/np.sqrt(2)-0.024, radius_right2, np.pi, 1.91, 200)
+
     # go straight
     '''
     gen.addLine(0, -0.30, 0, 0.435 + 0.048 + 0.10, 200)
@@ -151,9 +161,9 @@ def main():
     gen.populatePointsAndArcLength()
     # gen.centerTrack()
 
-    #gen.plotPoints()
+    gen.plotPoints()
     #gen.plotDir()
-    gen.writePointsToYaml('right.yaml')
+    #gen.writePointsToYaml('right2.yaml')
 
 if __name__ == "__main__":
    main()
