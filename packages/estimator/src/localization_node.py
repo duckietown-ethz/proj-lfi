@@ -40,6 +40,7 @@ class LocalizationNode(DTROS):
         rospy.set_param('~stop_time', 2)
         self.parameters['~stop_time'] = 2
 
+        self.parameters['~min_quality'] = 0.5
         rospy.set_param('~integration_enabled', True)
         self.parameters['~integration_enabled'] = True
 
@@ -115,7 +116,7 @@ class LocalizationNode(DTROS):
         self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
         self.model = Intersection4wayModel(self.pcm, self.scaled_homography)
         self.stopline_detector = StoplineDetector(self.scaled_homography, point_reduction_factor=1)
-        self.stopline_filter = StoplineFilter(min_quality=0.5, policy='weighted_avg')
+        self.stopline_filter = StoplineFilter(min_quality=self.parameters['~min_quality'], policy='weighted_avg')
 
         # This topic subscription is only needed initially, so it can be unregistered.
         self.sub_camera_info.unregister()
@@ -140,7 +141,6 @@ class LocalizationNode(DTROS):
     def pub_quality(self, qual):
         msg = Float64()
         msg.data = qual
-        msg.header
         self.pub_estimate_quality.publish(msg)
 
     def pub_integrated_pose(self):
