@@ -4,3 +4,4 @@ start_y: -0.20
 start_z: 0.0
 dbscan_eps: 0.5
 dbscan_min_samples: 4
+min_quality: 0.5
