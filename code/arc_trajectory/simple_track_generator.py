@@ -153,6 +153,11 @@ def main():
     gen.addLine(0, -0.30, 0, -radius_right2/np.sqrt(2)-0.024, 200)
     gen.addArc(radius_right2, -radius_right2/np.sqrt(2)-0.024, radius_right2, np.pi, 1.91, 200)
 
+    # right turn 3 --> translated
+    gen.addLine(0, -0.30, 0, -0.1, 200)
+    gen.addArc(radius_right, -0.1, radius_right, np.pi, np.pi / 2, 200)
+    gen.addLine(radius_right, -0.1 + radius_right, 0.10 + radius_right, -0.1 + radius_right, 200)
+
     # go straight
     '''
     gen.addLine(0, -0.30, 0, 0.435 + 0.048 + 0.10, 200)
@@ -163,7 +168,7 @@ def main():
 
     gen.plotPoints()
     #gen.plotDir()
-    #gen.writePointsToYaml('right2.yaml')
+    #gen.writePointsToYaml('right3.yaml')
 
 if __name__ == "__main__":
    main()
