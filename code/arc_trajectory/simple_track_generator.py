@@ -130,13 +130,19 @@ def main():
     # addArc(x0, y0, radius, theta_0, theta_1, pointsPerArcLength)
 
     # left turn
-    '''
-    radius_left = 0.205 + 0.1025 + 0.024 + 0.024
+    '''radius_left = 0.205 + 0.1025 + 0.024 + 0.024
     gen.addLine(0, -0.30, 0, 0, 200)
     gen.addArc(-radius_left, 0, radius_left, 0, np.pi / 2, 200)
-    gen.addLine(-radius_left, radius_left, -0.10 - radius_left, radius_left, 200)
-    '''
+    gen.addLine(-radius_left, radius_left, -0.10 - radius_left, radius_left, 200)'''
 
+    # left turn 2
+    radius_left2 = 0.205 + 0.1025 + 0.024 + 0.024 + 0.05
+    gen.addLine(0, -0.30, 0, -0.05, 200)
+    gen.addArc(-radius_left2, -0.05, radius_left2, 0, np.pi / 2, 200)
+    gen.addLine(-radius_left2, radius_left2-0.05, -0.05 - radius_left2, radius_left2-0.05, 200)
+
+
+    '''
     # right turn
     radius_right = 0.1025 + 0.024
     gen.addLine(0, -0.30, 0, 0, 200)
@@ -157,7 +163,7 @@ def main():
     gen.addLine(0, -0.30, 0, -0.1, 200)
     gen.addArc(radius_right, -0.1, radius_right, np.pi, np.pi / 2, 200)
     gen.addLine(radius_right, -0.1 + radius_right, 0.10 + radius_right, -0.1 + radius_right, 200)
-
+    '''
     # go straight
     '''
     gen.addLine(0, -0.30, 0, 0.435 + 0.048 + 0.10, 200)
@@ -166,9 +172,9 @@ def main():
     gen.populatePointsAndArcLength()
     # gen.centerTrack()
 
-    gen.plotPoints()
+    #gen.plotPoints()
     #gen.plotDir()
-    #gen.writePointsToYaml('right3.yaml')
+    gen.writePointsToYaml('left1.yaml')
 
 if __name__ == "__main__":
    main()
