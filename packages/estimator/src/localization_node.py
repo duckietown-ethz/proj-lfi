@@ -30,37 +30,59 @@ class LocalizationNode(DTROS):
         # Initialize the DTROS parent class
         super(LocalizationNode, self).__init__(node_name=node_name)
         self.veh_name = rospy.get_namespace().strip("/")
-        self.active = True
+
         # Initialize parameters
-        self.parameters['~verbose'] = None
-
-        rospy.set_param('~omega_factor', 1)
-        self.parameters['~omega_factor'] = 1
-
-        rospy.set_param('~stop_time', 2)
+        self.parameters['~verbose'] = False
+        self.parameters['~demo'] = True
         self.parameters['~stop_time'] = 2
+        self.parameters['~show_time_keeping'] = False
 
-        self.parameters['~min_quality'] = 0.5
-        rospy.set_param('~integration_enabled', True)
+        self.parameters['~integration_assisted_clustering'] = True
         self.parameters['~integration_enabled'] = True
 
+        self.parameters['~omega_factor'] = 1
+        self.parameters['~damping'] = False
+
+        self.parameters['~omega_max'] = 4.2
+        self.parameters['~v_bar'] = 0.15
+
+        # XXX:
         self.parameters['/{}/birdseye_node/image_size'.format(self.veh_name)] = None
         self.parameters['~start_x'] = None
         self.parameters['~start_y'] = None
         self.parameters['~start_z'] = None
         self.parameters['~dbscan_eps'] = None
         self.parameters['~dbscan_min_samples'] = None
+
+        self.parameters['~min_quality'] = 0.5
+
         self.updateParameters()
         self.refresh_parameters()
 
+        self.active = True
+        self.resetting = False
+
+        self.bridge = CvBridge()
+
+        self.pose = None # wrt intersection frame
+        self.integrated_pose = None # wrt intersection frame
+        self.pose_in = None # wrt integrator frame
+        self.integrator_offset = None # pose of integrator frame wrt intersection frame
+
+        self.model = Intersection4wayModel()
+
+        homography = get_homography_for_robot(self.veh_name)
+        camera_info = get_camera_info_for_robot(self.veh_name)
+        self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
+        self.stopline_detector = StoplineDetector(self.scaled_homography, point_reduction_factor=1)
+
         # Subscribers
-        self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.cb_camera_info, queue_size=1)
         self.sub_reset = self.subscriber('~reset', Bool, self.cb_reset, queue_size=1)
         self.sub_pose_in = self.subscriber('~open_loop_pose_estimate', Pose2DStamped, self.cb_pose_in, queue_size=1)
         self.sub_switch = self.subscriber("~switch", BoolStamped, self.cbSwitch, queue_size=1)
-
-        #TODO: listen to FSM mode and call reset when we enter NAVIGATION_COORDINATION
         self.sub_fsm = self.subscriber('~mode', FSMState, self.cb_mode, queue_size=1)
+        self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.cb_camera_info, queue_size=1)
+        self.sub_image_in = None # will be initialized once CameraInfo is received
 
         # Publishers
         self.pub_clustering = self.publisher('~verbose/clustering/compressed', CompressedImage, queue_size=1)
@@ -70,140 +92,137 @@ class LocalizationNode(DTROS):
         self.pub_pose_estimates = self.publisher('~pose_estimates', PoseArray, queue_size=1)
         self.pub_best_pose_estimate = self.publisher('~best_pose_estimate', PoseStamped, queue_size=1)
         self.pub_estimate_quality = self.publisher('~best_estimate_quality', Float64, queue_size=1)
-        # XXX:
+        # TODO: remap
         self.intersection_go = self.publisher('/{}/coordinator_node/intersection_go'.format(self.veh_name), BoolStamped, queue_size=1)
 
-        self.bridge = CvBridge()
-
-        self.pose = None
-        self.pose_in = None
-        self.integrator_offset = None
-        self.integrated_pose = None
-
-        self.last_thetain = None # for simulating inertia
-
         self.reset()
-
-        self.scaled_homography = None
-
-        self.resetting = False
-
         self.log('Waiting for camera to update its parameters.')
+
+    def cb_camera_info(self, msg):
+        # must set image subscriber first time around,
+        # next time check height to see if resolution has changed
+        if self.sub_image_in is None or self.scaled_homography.current_height != msg.height:
+            self.scaled_homography.update_homography(msg.height, msg.width)
+            buffer_size = msg.width * msg.height * 3 * 2 # 2 is a safety factor
+            self.log('Buffer changed to {}.'.format(buffer_size), 'info')
+            # Now the node can proceed to process images
+            self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
+
 
     def cb_mode(self,fsm_state_msg):
         if fsm_state_msg.state == "INTERSECTION_COORDINATION":
             self.log('Setting up for intersection')
+            rospy.sleep(self.stop_time)
             self.reset()
-        # this is just a Hack so I don't have to do it manually
-        msg = BoolStamped()
-        msg.data = True
-        rospy.sleep(self.stop_time)
-        self.intersection_go.publish(msg)
+            # For this task other duckiebots on the same road are excluded so it
+            #  just waits 2 seconds then this node gives the GO signal
+            if self.parameters['~demo']:
+                go_msg = BoolStamped()
+                go_msg.data = True
+                self.intersection_go.publish(go_msg)
+
 
     def cbSwitch(self, switch_msg):
         self.log('Switch ' + str(switch_msg.data))
-
         self.active = switch_msg.data
 
-    def cb_camera_info(self, msg):
-        # if self.image_size_width != msg.width or self.image_size_height != msg.height:
-        #     return
-        self.log('Received camera info.', 'info')
-        self.pcm = PinholeCameraModel()
-        self.pcm.fromCameraInfo(msg)
-        homography = get_homography_for_robot(self.veh_name)
-        camera_info = get_camera_info_for_robot(self.veh_name)
-        self.scaled_homography = ScaledHomography(homography, camera_info.height, camera_info.width)
-        self.model = Intersection4wayModel(self.pcm, self.scaled_homography)
-        self.stopline_detector = StoplineDetector(self.scaled_homography, point_reduction_factor=1)
-        self.stopline_filter = StoplineFilter(min_quality=self.parameters['~min_quality'], policy='weighted_avg')
 
-        # This topic subscription is only needed initially, so it can be unregistered.
-        self.sub_camera_info.unregister()
-        self.sub_camera_info = self.subscriber('~camera_info', CameraInfo, self.scaled_homography.cb_camera_info, queue_size=1)
-        buffer_size = msg.width * msg.height * 3 * 2
-        self.log('Buffer size set to {}.'.format(buffer_size), 'info')
-        # Now the node can proceed to process images
-        self.sub_image_in = self.subscriber('~image_in/compressed', CompressedImage, self.cb_image_in, queue_size=1, buff_size=buffer_size)
-
-        self.log('Initialized.')
-
+    # the received pose is wrt the initial position when car_interface started
     def cb_pose_in(self, pose2d_in):
-        self.pose_in = pose2d_in
-        if self.integrator_offset is None:
-            self.update_integrator_offset()
-        else:
+        if self.integrator_offset is not None:
+            # correct for drift
             self.integrated_pose = self.correct(pose2d_in)
+        self.pose_in = pose2d_in # keep it to update offset
 
-    def pub_pose(self):
-        self.pub_best_pose_estimate.publish(self.pose)
 
+    def pub_pose(self, pose):
+        self.pub_best_pose_estimate.publish(pose)
+
+
+    # metrics for the clustering algoruthm
     def pub_quality(self, qual):
         msg = Float64()
         msg.data = qual
         self.pub_estimate_quality.publish(msg)
 
-    def pub_integrated_pose(self):
-        self.pub_best_pose_estimate.publish(self.integrated_pose)
 
+    # useful for debugging
     def cb_reset(self, msg):
         do_reset = msg.data
         self.log('got reset command: '+str(do_reset))
         if do_reset:
             self.reset()
 
+
+    # reset the pose to the ideal pose before entering an intersection
     def reset(self):
         self.log('Intersection localization is resetting')
+        # XXX: replace the following mechanism with mutex or workaround
         self.resetting = True
-        # TODO: replace with mutex or workaround
+        rospy.set_param('/{}/kinematics_node/omega_max'.format(self.veh_name), self.parameters['~omega_max'])
+        rospy.set_param('/{}/lane_controller_node/v_bar'.format(self.veh_name), self.parameters['~v_bar'])
+
         rospy.sleep(.2) # wait for current image to finish processing
         position = [self.start_x, self.start_y, self.start_z]
-        heading = np.pi/2.0 # TODO: make this a param as well
+        heading = np.pi/2.0
         orientation = unit_vector(quaternion_from_euler(0, 0, heading, axes='sxyz'))
         self.pose = utils.pose_stamped('intersection', position, orientation)
-        self.pub_pose()
-        self.integrator_offset = None
-        self.pose_in = None
+        self.update_integrator_offset()
+        self.pub_pose(self.pose)
         self.resetting = False
+
+
 
     def correct(self, pose_in):
         # assume integrator_offset is initialized
         # pose_in is Pose2DStamped (x,y,heading) in the integrator frame
         # pose_out is PoseStamped (3d + quat) in the intersection frame
 
-        # unpack stuff we'll use
         xin = pose_in.x
         yin = pose_in.y
-        thetain = pose_in.theta # <--- needs some inertia, simulated by damping
-        # ideally damping should be where the integration happens, even
-        #   better, the integration could use a basic dynamic model
-        prev_theta = euler_from_quaternion(utils.quat_to_tuple(self.integrated_pose.pose.orientation))[2]
-
-        if self.last_thetain is not None:
-            dtheta = thetain - self.last_thetain
-            thetain = self.last_thetain + self.parameters['~omega_factor']*dtheta
-        self.last_thetain = thetain
+        thetain = pose_in.theta # needs some inertia
 
         xoff = self.integrator_offset[0]
         yoff = self.integrator_offset[1]
         thetaoff = self.integrator_offset[2]
 
-        #TODO: stash the transformation
+        # TODO: stash the transformation
         x = xin*np.cos(thetaoff) - yin*np.sin(thetaoff) + xoff
         y = xin*np.sin(thetaoff) + yin*np.cos(thetaoff) + yoff
+
         theta = thetain + thetaoff
+
+        if self.parameters['~damping']:
+            # Ideally damping theta should be where the integration happens, even
+            #   better, the integration could use a basic dynamic model.
+            # Slow it down by taking the difference, scaling it and re-adding it
+            prev_theta = euler_from_quaternion(utils.quat_to_tuple(self.integrated_pose.pose.orientation))[2]
+
+            # for reference: theta upon entering intersection is pi/2
+            # constrain it with continuity up to a U-turn (-pi/2, 3pi/2)
+            prev_theta = ( (prev_theta + np.pi/2) % (2*np.pi) ) - np.pi/2
+            theta = ( (theta + np.pi/2) % (2*np.pi) ) - np.pi/2
+
+            dtheta = theta - prev_theta
+
+            theta = prev_theta + self.parameters['~omega_factor']*dtheta
+
         quat = unit_vector(quaternion_from_euler(0, 0, theta, axes='sxyz'))
 
         out = utils.pose_stamped('intersection', (x,y,0), quat)
         return out
+
 
     def update_integrator_offset(self):
         # Integrator offset is the pose of the integrator frame wrt intersection frame.
         # It is just a tuple (x,y,theta)
         # We get it by comparing self.pose_in and self.pose, which are assumed
         # to be synchronised before this method is called
+        self.integrated_pose = self.pose
+
+        # latest pose from the integrator is needed to find the offset
         if self.pose_in is None: return
-        # self.pose doesn't need to be checked as it is always initialized
+
         xin = self.pose_in.x
         yin = self.pose_in.y
         thetain = self.pose_in.theta
@@ -218,32 +237,41 @@ class LocalizationNode(DTROS):
         yoff = y - xin*np.sin(thetaoff) - yin*np.cos(thetaoff)
 
         self.integrator_offset = (xoff, yoff, thetaoff)
-        self.integrated_pose = self.pose
 
         if self.verbose:
             self.log('odom x=%.3f\ty=%.3f\tth=%.3f'%(xin,yin,thetain))
             self.log('pose x=%.3f\ty=%.3f\tth=%.3f'%(x,y,theta))
             self.log('offs x=%.3f\ty=%.3f\tth=%.3f'%(xoff,yoff,thetaoff))
 
+
+    # If the node is active, not resetting or shutting down a pose will be
+    # published every time this callback is run.
+    # The pose is estimated with the image. Plain integration is a fallback
     def cb_image_in(self, msg):
-        if self.resetting == True: return
         if self.is_shutdown: return
-        # TODO Change to debug level
-        if self.verbose:
-            self.log('Received image.', 'info')
-        tk = TimeKeeper(msg)
+        if self.resetting == True: return
 
         if self.parametersChanged:
             self.log('Parameters changed.', 'info')
             self.refresh_parameters()
             self.parametersChanged = False
+
         if not self.active: return
 
-        tk.completed('parameter check')
+        if self.verbose:
+            self.log('Received image.', 'info')
+        tk = TimeKeeper(msg)
+
         img_original = utils.read_image(msg)
         if img_original is None:
             return
+        tk.completed('decode image')
 
+        # helps to avoid mismatch if we had a frame without stopline detections
+        if self.parameters['~integration_assisted_clustering']:
+            if self.verbose:
+                self.log('using integrated pose to predict cluster centers','info')
+            self.pose = self.integrated_pose
         stopline_poses_predicted = self.model.get_stopline_poses_reference(self.pose.pose)
         if self.verbose:
             # To see them in rviz: (they are also in colour on the frame)
@@ -291,56 +319,38 @@ class LocalizationNode(DTROS):
             self.stopline_filter.update_stopline_poses(poses_estimated, cluster_qualities)
             best_pose_estimate = self.stopline_filter.get_best_estimate()
 
-        if best_pose_estimate is not None:
+        if best_pose_estimate is not None: # at least one is good enough
+            if self.verbose:
+                self.log('got a good pose from stoplines','info')
+
             self.pose.header.stamp = msg.header.stamp
-            self.pose.header.frame_id = 'intersection'
             self.pose.pose = best_pose_estimate
-            self.pub_pose()
-            self.update_integrator_offset()
+            self.pub_pose(self.pose)
             if self.verbose:
                 qual = self.stopline_filter.get_estimate_quality()
                 self.pub_quality(qual)
-        elif self.parameters['~integration_enabled'] and self.integrated_pose is not None:
+            if self.integration_enabled:
+                self.update_integrator_offset()
+
+        elif self.integration_enabled and self.integrated_pose is not None:
+            if self.verbose:
+                self.log('fall back to integrated pose','info')
             self.integrated_pose.header.stamp = msg.header.stamp
-            self.pub_integrated_pose()
+            self.pub_pose(self.integrated_pose)
 
         if self.verbose:
             if len(stopline_poses_corrected) > 0:
                 self.publish_pose_array(self.pub_stoplines_measured, 'axle', stopline_poses_corrected)
                 self.publish_pose_array(self.pub_pose_estimates, 'intersection', poses_estimated)
 
-            # TODO Write cluster quality in cluster center
+            # Feature proposal: display quality on the cluster markers
             img_debug = self.stopline_detector.draw_debug_image(img_original, stopline_poses_predicted,
                                                                 stopline_poses_corrected, clusters, labels)
             utils.publish_image(self.bridge, self.pub_clustering, img_debug)
             tk.completed('debug image')
 
+        if self.parameters['~show_time_keeping']:
             self.log(tk.getall())
-
-
-    def draw_position_on_intersection(self, position_meter, angle):
-        rospack = rospkg.RosPack()
-        self.pkg_path = rospack.get_path('estimator')
-        path = self.pkg_path + "/src/four-way-intersection.png"
-        image = cv2.imread(path)
-        height, width, _ = image.shape
-        image = cv2.copyMakeBorder(image, height/2, height/2, width/2, width/2, cv2.BORDER_CONSTANT, None, (0,0,0))
-        height_m = 0.61
-        width_m = 0.61
-
-        offset = np.array([height/2 + height, width/2 + (width*3)/4])
-        position_intersection = - position_meter * np.array([height / height_m, width / width_m])
-        position_image = offset + position_intersection.astype(int)
-
-        length = 100
-        angle_rad = np.deg2rad(180.0 - angle)
-        pt1 = (position_image[1], position_image[0])
-        pt2 = (int(pt1[0] + length * np.sin(angle_rad)), int(pt1[1] + length * np.cos(angle_rad)))
-
-        image = cv2.arrowedLine(image, pt1, pt2, (0,255,0), 5)
-
-        return image
-
 
     def publish_pose_array(self, publisher, frame_id, poses):
         pose_array = PoseArray()
@@ -352,9 +362,6 @@ class LocalizationNode(DTROS):
 
     def refresh_parameters(self):
         self.verbose = self.parameters['~verbose']
-        image_size = self.parameters['/{}/birdseye_node/image_size'.format(self.veh_name)]
-        self.image_size_height = image_size['height']
-        self.image_size_width = image_size['width']
         self.start_x = self.parameters['~start_x']
         self.start_y = self.parameters['~start_y']
         self.integration_enabled = self.parameters['~integration_enabled']
@@ -362,6 +369,7 @@ class LocalizationNode(DTROS):
         self.stop_time = self.parameters['~stop_time']
         self.dbscan_eps = self.parameters['~dbscan_eps']
         self.dbscan_min_samples = self.parameters['~dbscan_min_samples']
+        self.stopline_filter = StoplineFilter(min_quality=self.parameters['~min_quality'], policy='weighted_avg')
 
 
     def onShutdown(self):

@@ -26,8 +26,6 @@ class VirtualLaneNode(DTROS):
         super(VirtualLaneNode, self).__init__(node_name=node_name)
         self.veh_name = rospy.get_namespace().strip("/")
 
-        self.trajectories = self.load_trajectories(['straight', 'left', 'right'])
-
         # Initialize parameters
         self.parameters['~verbose'] = None
         self.parameters['~trajectory'] = None
@@ -37,8 +35,8 @@ class VirtualLaneNode(DTROS):
         self.parameters['~end_angle_deg_straight'] = None
         self.parameters['~end_distance_right'] = None
         self.parameters['~end_angle_deg_right'] = None
-        self.parameters['~y_offset_right'] = None
-        self.y_offset_right = 0
+        self.parameters['~y_offset_right'] = 0
+        self.parameters['~x_offset_right'] = 0
         self.end_condition_distance = None
         self.end_condition_angle_deg = None
 
@@ -263,6 +261,8 @@ class VirtualLaneNode(DTROS):
         self.pub_trajectory.publish(track_marker)
 
     def refresh_parameters(self):
+        self.trajectories = self.load_trajectories(['straight', 'left', 'right'])
+
         self.verbose = self.parameters['~verbose']
         self.trajectory = self.parameters['~trajectory']
         if self.trajectory == 'right':
@@ -274,10 +274,8 @@ class VirtualLaneNode(DTROS):
         elif self.trajectory == 'left':
             self.end_condition_distance = self.parameters['~end_distance_left']
             self.end_condition_angle_deg = self.parameters['~end_angle_deg_left']
-        if self.parameters['~y_offset_right'] != self.y_offset_right:
-            delta = self.parameters['~y_offset_right'] - self.y_offset_right
-            self.trajectories['right']['track'] += [0, delta]
-            self.y_offset_right = self.parameters['~y_offset_right']
+        self.trajectories['right']['track'] += \
+            [self.parameters['~x_offset_right'], self.parameters['~y_offset_right']]
 
 if __name__ == '__main__':
     # Initialize the node

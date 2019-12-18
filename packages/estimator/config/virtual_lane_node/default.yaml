@@ -6,4 +6,5 @@ end_distance_straight: 0.2
 end_angle_deg_straight: 30
 end_distance_right: 0.4
 end_angle_deg_right: 30
-y_offset_right: -0.1
+y_offset_right: 0
+x_offset_right: 0
