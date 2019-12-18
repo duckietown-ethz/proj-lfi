@@ -159,8 +159,6 @@ class LocalizationNode(DTROS):
         self.log('Intersection localization is resetting')
         # XXX: replace the following mechanism with mutex or workaround
         self.resetting = True
-        rospy.set_param('/{}/kinematics_node/omega_max'.format(self.veh_name), self.parameters['~omega_max'])
-        rospy.set_param('/{}/lane_controller_node/v_bar'.format(self.veh_name), self.parameters['~v_bar'])
 
         rospy.sleep(.2) # wait for current image to finish processing
         position = [self.start_x, self.start_y, self.start_z]

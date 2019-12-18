@@ -37,7 +37,7 @@ rqt_image_view
 docker run -it --rm --net host -v ~/rosbags:/data duckietown/dt-ros-commons:daffy-amd64 /bin/bash
 
 # REMOTE MASTER get a shell on a local container connected to the duckiebots ros master (with a mounted volume)
-docker run -it --rm --net host -e ROS_MASTER_URI="http://192.168.1.26:11311/" -v ~/rosbags:/data duckietown/dt-ros-commons:daffy-amd64 /bin/bash
+docker run -it --rm --net host -e ROS_MASTER_URI="http://192.168.1.26:11311/" -v /home/seb/proj-lfi/packages/estimator/config/virtual_lane_node:/traj duckietown/dt-ros-commons:daffy-amd64 /bin/bash
 
 # REMOTE MASTER get a shell on a local container connected to the duckiebot's ros master
 IP="109.202.221.23"
@@ -109,7 +109,8 @@ rosparam get /theducknight/virtual_lane_node
 	  ... }
 
 # RIGHT:
-rosparam set /theducknight/kinematics_node/omega_max 4
+rosparam set /theducknight/kinematics_node/omega_max 4.2
+rosparam set /theducknight/localization_node/verbose 1
 
 #LEFT
 rosparam set /theducknight/virtual_lane_node/end_condition_angle_deg 30
