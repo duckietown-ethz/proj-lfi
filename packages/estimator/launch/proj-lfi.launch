@@ -54,7 +54,7 @@
 			<!-- load the generated virtual lane trajectories to traverse the intersection -->
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/straight.yaml"/>
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/left.yaml"/>
-			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/right.yaml"/>
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/right1.yaml"/>
 
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/$(arg param_file_name).yaml"/>
 			<remap from="virtual_lane_node/lane_pose" to="lane_controller_node/intersection_navigation_pose"/>
