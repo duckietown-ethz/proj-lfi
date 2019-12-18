@@ -43,9 +43,6 @@ class LocalizationNode(DTROS):
         self.parameters['~omega_factor'] = 1
         self.parameters['~damping'] = False
 
-        self.parameters['~omega_max'] = 4.2
-        self.parameters['~v_bar'] = 0.15
-
         # XXX:
         self.parameters['/{}/birdseye_node/image_size'.format(self.veh_name)] = None
         self.parameters['~start_x'] = None

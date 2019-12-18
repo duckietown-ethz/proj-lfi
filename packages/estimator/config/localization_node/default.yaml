@@ -8,9 +8,7 @@ dbscan_min_samples: 4
 min_quality: 0.5
 integration_enabled: true
 damping: true
-omega_factor: 0.5
+omega_factor: 0.2
 stop_time: 2.0
 integration_assisted_clustering: true
 show_time_keeping: false
-omega_max: 4.2
-v_bar: 0.15
