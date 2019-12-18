@@ -190,12 +190,9 @@ states:
       joystick_override_off_and_deep_lane_on: "DEEP_LANE_FOLLOWING"
       parallel_autonomy_on: "SAFE_JOYSTICK_CONTROL"
     active_nodes:
-      - lane_filter_node
       - birdseye_node
       - localization_node
       - virtual_lane_node
-      - line_detector_node
-      - stop_line_filter_node
       - framerate_high
       - decoder_node
     lights: ["joystick"]
