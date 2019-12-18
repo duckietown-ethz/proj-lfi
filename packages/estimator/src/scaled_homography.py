@@ -74,9 +74,7 @@ class ScaledHomography():
 
         return H
 
-
     def update_homography(self, height, width):
-        # TODO Test performance on duckiebot to determine if this check actually has an impact
         if height != self.current_height or width != self.current_width:
             self.recalculate_homography(height, width)
 
@@ -90,7 +88,3 @@ class ScaledHomography():
 
         self.current_height = height
         self.current_width = width
-
-
-    def cb_camera_info(self, msg):
-        self.update_homography(msg.height, msg.width)
