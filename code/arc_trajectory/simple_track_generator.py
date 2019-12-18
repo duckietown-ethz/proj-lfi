@@ -129,17 +129,29 @@ def main():
     # addLine(x0, y0, x1, y1, pointsPerArcLength)
     # addArc(x0, y0, radius, theta_0, theta_1, pointsPerArcLength)
 
-    # left turn
-    '''radius_left = 0.205 + 0.1025 + 0.024 + 0.024
+    '''# left turn
+    radius_left = 0.205 + 0.1025 + 0.024 + 0.024
     gen.addLine(0, -0.30, 0, 0, 200)
     gen.addArc(-radius_left, 0, radius_left, 0, np.pi / 2, 200)
-    gen.addLine(-radius_left, radius_left, -0.10 - radius_left, radius_left, 200)'''
+    gen.addLine(-radius_left, radius_left, -0.10 - radius_left, radius_left, 200)
 
     # left turn 2
     radius_left2 = 0.205 + 0.1025 + 0.024 + 0.024 + 0.05
     gen.addLine(0, -0.30, 0, -0.05, 200)
     gen.addArc(-radius_left2, -0.05, radius_left2, 0, np.pi / 2, 200)
     gen.addLine(-radius_left2, radius_left2-0.05, -0.05 - radius_left2, radius_left2-0.05, 200)
+
+    # left turn 3
+    radius_left2 = 0.205 + 0.1025 + 0.024 + 0.024 + 0.10
+    gen.addLine(0, -0.30, 0, -0.10, 200)
+    gen.addArc(-radius_left2, -0.10, radius_left2, 0, np.pi / 2, 200)
+    gen.addLine(-radius_left2, radius_left2 - 0.1, -0.1 - radius_left2, radius_left2 - 0.1, 200)'''
+
+    # left turn 4
+    radius_left2 = 0.205 + 0.1025 + 0.024 + 0.024 + 0.15
+    gen.addLine(0, -0.30, 0, -0.15, 200)
+    gen.addArc(-radius_left2, -0.15, radius_left2, 0, np.pi / 2, 200)
+    gen.addLine(-radius_left2, radius_left2 - 0.15, -0.15 - radius_left2, radius_left2 - 0.15, 200)
 
 
     '''
@@ -174,7 +186,7 @@ def main():
 
     #gen.plotPoints()
     #gen.plotDir()
-    gen.writePointsToYaml('left1.yaml')
+    gen.writePointsToYaml('left3.yaml')
 
 if __name__ == "__main__":
    main()
