@@ -9,10 +9,7 @@ import utils
 
 class Intersection4wayModel():
 
-    def __init__(self, pcm, scaled_homography):
-        self.pcm = pcm
-        self.scaled_homography = scaled_homography
-
+    def __init__(self):
         # Origin of ther intersection coordinate system is the center of stopline 0.
         tile_side_length = 0.61
         lane_width = 0.205
