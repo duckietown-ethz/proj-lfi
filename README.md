@@ -6,6 +6,31 @@ cd proj-lfi
 git submodule update --init
 ```
 
+## Building `proj-lfi`
+dts devel build -f --arch arm32v7 -H DUCKIEBOT_NAME.local
+
+## Building `proj-lfi-car-interface`
+```
+cd car-interface
+dts devel build -f --arch arm32v7 -H DUCKIEBOT_NAME.local
+```
+
+## Running
+```
+dts duckiebot demo --demo_name all_drivers --duckiebot_name DUCKIEBOT_NAME --package_name duckiebot_interface --image duckietown/dt-duckiebot-interface:daffy
+dts duckiebot demo --demo_name all --duckiebot_name DUCKIEBOT_NAME --package_name car_interface --image duckietown/proj-lfi-car-interface:daffy-arm32v7
+dts duckiebot demo --demo_name proj-lfi --duckiebot_name DUCKIEBOT_NAME --package_name estimator --image duckietown/proj-lfi:master-arm32v7 --debug
+```
+
+## Connect a Keyboard controller
+```
+dts duckiebot keyboard_control theducknight --base_image duckietown/dt-core:daffy-amd64
+```
+## Prepare a ROS enabled command line
+```
+dts start_gui_tools theducknight --base_image duckietown/dt-core:daffy-amd64
+```
+
 # Demo Beta
 - Update submodules `core` and `car-interface`.
 - Change duckiebot name in the Makefile
