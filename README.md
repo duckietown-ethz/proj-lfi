@@ -161,10 +161,24 @@ rostopic echo --offset /DUCKIEBOT_NAME/lane_controller_node/intersection_navigat
 
 # `proj-lfi` code structure
 All the code is contained in two Docker Images.
-1. `proj-lfi-car-interface` is a custom version of `dt-car-interface`, is was only modified to work without obstacle avoidance 
-2. `proj-lfi` is derived from `dt-core` and contains three packages:
- - `estimator` with the localization pipeline
- - `anti-instagram` with a modified anti-instagram node that does not do scaling by default
- - `fsm` with a custom finite state machine configuration file to integrate our nodes
+- `proj-lfi-car-interface` is a custom version of `dt-car-interface`, it was only modified to work without the obstacle avoidance stack.
+- `proj-lfi` is derived from `dt-core` and contains three packages:
+   - `estimator` with the localization pipeline
+   - `anti-instagram` with a modified `anti_instagram_node` that does not do scaling by default
+   - `fsm` with a custom finite state machine configuration file to integrate our nodes
 
+## `estimator` package structure
+Three nodes are run from this package:
+- `birdseye_node` takes distorted, color balanced images from the `anti_instagram_node` and converts them to a ground projection. It relies on the following modules:
+   - `scaled_homography` for executing the ground projection of an image. It abstracts the homography matrix and accounts for downscaled images.
+- `localization_node` take the ground projected image and the pose from the `velocity_to_pose_node` and infers the robot pose in the intersection reference frame. It relies on the the following modules:
+   - `intersection_model` contains an abstraction to jointly handle stopline locations
+   - `stopline_detector` contains all the functions to process the image and detect stopline poses
+   - `stopline_filter` contains a class to handle inference of the robot pose from the detected stopline poses
+   
+- `virtual_lane_node` takes the robot pose wrt the intersection reference frame and computes the lane pose (d, phi) wrt an imaginary curved lane leading to the configures output lane  
 
+The remaining files in `src` are support files and utilities:
+- `config_loader.py` is used to get the default homography matrix and image calibration files from the filesystem.
+- `timekeeper.py` contains the tools used to measure the algorithm execution time
+- `utils.py` contains various shared functions such as for working with different pose representations or encoding/decoding image messages
