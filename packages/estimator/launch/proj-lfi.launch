@@ -53,7 +53,7 @@
 		<node pkg="estimator" name="virtual_lane_node" type="virtual_lane_node.py" output="screen">
 			<!-- load the generated virtual lane trajectories to traverse the intersection -->
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/straight.yaml"/>
-			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/left3.yaml"/>
+			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/left.yaml"/>
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/trajectories/right1.yaml"/>
 
 			<rosparam command="load" file="$(find estimator)/config/virtual_lane_node/$(arg param_file_name).yaml"/>
