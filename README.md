@@ -1,4 +1,4 @@
-# Intersection Navigation
+# Intersection Navigation Demo
 The following are instructions to set up and run the Intersection Navigation Demo.
 
 This demo uses the Intersection Navigation solution proposed by the Fall 2019 ETH AMOD `proj-lfi` group.
@@ -158,3 +158,13 @@ The output is negative seconds and positive nanosecods which may be counter-intu
 ```
 rostopic echo --offset /DUCKIEBOT_NAME/lane_controller_node/intersection_navigation_pose/header
 ```
+
+# `proj-lfi` code structure
+All the code is contained in two Docker Images.
+1. `proj-lfi-car-interface` is a custom version of `dt-car-interface`, is was only modified to work without obstacle avoidance 
+2. `proj-lfi` is derived from `dt-core` and contains three packages:
+ - `estimator` with the localization pipeline
+ - `anti-instagram` with a modified anti-instagram node that does not do scaling by default
+ - `fsm` with a custom finite state machine configuration file to integrate our nodes
+
+
