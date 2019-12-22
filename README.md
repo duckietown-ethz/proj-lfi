@@ -134,10 +134,15 @@ Name | Description
 ---|---
 `verbose` |
 `start_x` `start_y` | Initial guess for the localization when the robot stops at the stopline. The intersection coordinate system origin is in the center of the stopline the robot stops at. The x axis is oriented right and the y axis is oriented forwards.
-`integration_enabled` | 
 `dbscan_eps` | Minimum distance between red pixels to be considered neighbours.
 `dbscan_min_samples` | Minimum number of neighbours for a red pixel to be considered a core point.
-`min_quality` | In the interval (0, 1), ratio of detected red pixels in a cluster to make 
+`min_quality` | Ratio between the area of a cluster and that of a full stopline for it to be used for estimating the pose
+`integration_enabled` | Boolean - Keep track of the pose from the `velocity_to_pose_node` to estimate the pose when no clusters satisfy `min_quality`. 
+`damping` | Boolean - Enable a "trick" to slow down the change in heading from the integrated pose. Integrating the motor commands in a kinematic model overestimates the yaw rate.
+`omega_factor` | Factor by which to reduce the estimated yaw rate if `damping` is True. (default=0.2)
+`integration_assisted_clustering` | Boolean - Use the integrated pose to predict the next location of the stoplines. This reduces the likelihood of misclassifying stoplines if the robot moves fast or frames are skipped.
+`stop_time` | Seconds - For the demo, time to wait at the stopline.
+`show_time_keeping` | Boolean - Output code profiling in the logs. (Show delay across exceution of the algorithm)
 
 #### `birdseye_node/`
 Name | Description
