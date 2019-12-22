@@ -72,7 +72,7 @@ dts duckiebot demo --demo_name proj-lfi --duckiebot_name DUCKIEBOT_NAME --packag
 ```
 All the nodes might take a couple of minutes to start up. When everything is ready `/DUCKIEBOT_NAME/lane_controller_node/intersection_navigation_pose` will be constantly published. You can check it with the `rostopic` command line tool.
 
-### See it in action 
+### Make the Duckiebot drive 
 - Place Duckiebot in a lane directed towards a four way intersection.
 - Start lane following with the keyboard controller. 
 
@@ -104,31 +104,46 @@ rosparam set /DUCKIEBOT_NAME/virtual_lane_node/verbose 1
 ``` 
 Enabling verbose on these nodes will also send a lot of additional information to the log and will have a negative performance impact.
 
-We included an rviz configuration file in the `rviz` directory, to use it the duckiebot name has to be updated in the ROS topics.
+We included an rviz configuration file in the `rviz` directory but the duckiebot name has to be manually updated in the ROS topics.
 
 NOTE: The localization debug image is not published when the node is not active (eg. in lane following mode). For convenience we have set the finite state machine to also activate the node during Keyboard Control.
 
+When the Finite State Machine switches from to `INTERSCTION_CONTROL` after arriving at a stop line the localization is reset. This switch does not happen when using the keyboard controller. To achieve the same result, you can enable lane following and disable it again before the robot starts moving.
+
+Before entering the intersection the closest stopline (the one the robot stopped at) must be highlighted in blue.
+Correct re-detection of the stoplines can be verified by the highlight colors of the stoplines remianing constant.
 ![](media/still-rviz-gif.gif)
 
+As an example failure case, the following video shows the clustering algorithm mistaking a stop line for another. The stopline marked in red changes from being the one in front to the one on the left.
+![](media/incorrect-classification.gif)
 
 ### Adjusting parameters:
 Parameters can be adjusted to tune resource usage, localization performance and planning.
 #### `virtual_lane_node/`
-Name                      | Description | Default | Allowed  
---------------------------|-------------|--------:|---------:
-`end_condition_distance`  |             | 0.5     |
-`end_condition_angle_deg` |             | 45      |
+Name | Description
+---|---
+`verbose` | Enable verbose logging and publish trajectory for visualization
+`trajectory` | Trajectory to follow across the intersection (either `left`, `right` or`straight`)
+`end_condition_distance_right`  `end_condition_distance_left` `end_condition_distance_straight` | Maximum distance in meters from the end of the planned trajectory to switch back to lane following. The trajectory overlaps with exit lane by about 0.2m
+`end_condition_angle_deg_right` `end_condition_angle_deg_left` `end_condition_angle_deg_straight` | Maximum angle in degrees between the robot and the exit lane to switch back to lane following
+`y_offset_right` `x_offset_right` | *Legacy* - Translates the trajectory for right turns to avoid cutting the corner or invading the other lane. This has not been used since the default trajectory has been changed to a larger radius
+
 
 #### `localization_node/`
-Name                      | Description | Default | Allowed  
---------------------------|-------------|--------:|---------:
-`integration_enabled`     |             | 1       |
+Name | Description
+---|---
+`verbose` |
+`start_x` `start_y` | Initial guess for the localization when the robot stops at the stopline. The intersection coordinate system origin is in the center of the stopline the robot stops at. The x axis is oriented right and the y axis is oriented forwards.
+`integration_enabled` | 
+`dbscan_eps` | Minimum distance between red pixels to be considered neighbours.
+`dbscan_min_samples` | Minimum number of neighbours for a red pixel to be considered a core point.
+`min_quality` | In the interval (0, 1), ratio of detected red pixels in a cluster to make 
 
 #### `birdseye_node/`
-Name                      | Description | Default | Allowed  
---------------------------|-------------|--------:|---------:
-`verbose` | Enable additional logging and publishing of rectified images | False | Boolean
-`rectify` | Rectification is required for correct ground reprojection, set to False to bypass it. (Untested) | True       | Boolean
+Name | Description
+---|---
+`verbose` | Enable additional logging and publishing of rectified images
+`rectify` | Rectification is required for correct ground reprojection, set to False to bypass it. (Untested)
 
 Adjusting parameters in `lane_controller_node` and `kinematics_node` can be useful to improve trajectory tracking performance.
 
