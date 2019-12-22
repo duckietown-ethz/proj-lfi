@@ -70,7 +70,7 @@ You can also `rqt_console &` or `rqt_plot &`.
 ```
 dts duckiebot demo --demo_name proj-lfi --duckiebot_name DUCKIEBOT_NAME --package_name estimator --image duckietown/proj-lfi:master-arm32v7 --debug
 ```
-All the nodes might take a couple of minutes to start up. When everything is ready `/DUCKIBOT_NAME/lane_controller_node/intersection_navigation_pose` will be contanstly published. You can check it with the `rostopic` command line tool.
+All the nodes might take a couple of minutes to start up. When everything is ready `/DUCKIEBOT_NAME/lane_controller_node/intersection_navigation_pose` will be constantly published. You can check it with the `rostopic` command line tool.
 
 ### See it in action 
 - Place Duckiebot in a lane directed towards a four way intersection.
@@ -81,18 +81,20 @@ The robot will drive up to the stop line and stop for two seconds. It will then 
 
 #### Change the direction it takes
 For the demo, the direction in which the robot will exit the intersection is set via a ROS parameter.
-The default is going straight. It can be changed by issuing one of the follwing commands:
+The default is going straight. It can be changed in real time by issuing one of the follwing commands:
 ```
 rosparam set /DUCKIEBOT_NAME/virtual_lane_node/trajectory left
 rosparam set /DUCKIEBOT_NAME/virtual_lane_node/trajectory right
 rosparam set /DUCKIEBOT_NAME/virtual_lane_node/trajectory straight
 ```
-The intersection navigation system is not informed about the kind of intersection (3-way or 4-way), nor about the direction from which it approaches three way intersections. The robot will likely leave the road if configured to take an illegal turn.
+The intersection navigation system is not informed about the kind of intersection (3-way or 4-way), nor about the direction from which it approaches three way intersections. 
+
+If you do not stop lane following, the demo will continue indefinetely. The robot will however likely leave the road if setup to make an impossible turn.
 
 ### Visualization 
-Visualization is useful to understand or debug the stopline based localization. We included an rviz configuration file in the `rviz` directory, you will only have to change the duckiebot name in the ROS topics.
+Visualization is useful to understand or debug the stopline based localization. 
 
-Enable visualization of the stopline detection and all candidate pose estimates:
+Enable publication of the stopline detection debug image and all candidate pose estimates:
 ```
 rosparam set /DUCKIEBOT_NAME/localization_node/verbose 1
 ``` 
@@ -100,10 +102,14 @@ Enable visualization of the trajectory in rviz:
 ```
 rosparam set /DUCKIEBOT_NAME/virtual_lane_node/verbose 1
 ``` 
-
 Enabling verbose on these nodes will also send a lot of additional information to the log and will have a negative performance impact.
 
-TODO:
+We included an rviz configuration file in the `rviz` directory, to use it the duckiebot name has to be updated in the ROS topics.
+
+NOTE: The localization debug image is not published when the node is not active (eg. in lane following mode). For convenience we have set the finite state machine to also activate the node during Keyboard Control.
+
+![](media/still-rviz-gif.gif)
+
 
 ### Adjusting parameters:
 Parameters can be adjusted to tune resource usage, localization performance and planning.
