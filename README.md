@@ -132,7 +132,7 @@ Name | Description
 #### `localization_node/`
 Name | Description
 ---|---
-`verbose` |
+`verbose` | Boolean - Publish debug image, all candidate poses and log additional information
 `start_x` `start_y` | Initial guess for the localization when the robot stops at the stopline. The intersection coordinate system origin is in the center of the stopline the robot stops at. The x axis is oriented right and the y axis is oriented forwards.
 `dbscan_eps` | Minimum distance between red pixels to be considered neighbours.
 `dbscan_min_samples` | Minimum number of neighbours for a red pixel to be considered a core point.
