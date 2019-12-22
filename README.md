@@ -160,8 +160,9 @@ Adjusting parameters in `lane_controller_node` and `kinematics_node` can be usef
 1. *The robot often fails crossing one particular intersection in some particular direction. (It does not happen on other intersections of the same type)* - Make sure lighting is consistent and that there are no red objects in the robot's FOV other than the stoplines. Use the clusering debug image to see if there are other red objects or reflections being classified as stoplines.
 1. *The robot turns on the spot* - Lower `kinematics_node/omega_max` or increase `kinematics_node/v_bar` (or any other speed limit that may have been set)
 1. *The robot goes back to following the correct lane but seems to keep turning a bit too long/invades the other lane.* - Try adjusting the corresponding `end_condition_xxx` parameters.
-1. *The robot often fails crossing any intersection in some particular direction:*
-   1. *It seems like control is not given back to the lane controller when it should have* - Inspect the clustering debug image. If stoplines are not being tracked or are being misclassfied you can make outlier detection less aggressive by lowering `min_quality`. If this does not help try disabling `integration_assisted_clustering`. If this improves the situation make sure you have lowered `kinematics_node/omega_max` to about 4 rad/s then try changing the value of `omega_factor`
+1. *The robot often fails crossing any intersection in some particular direction:* - By inspecting the clustering debug image you see that stoplines are not being tracked or are being misclassfied (like in the video above). Try one of the following
+   1. Make outlier detection less aggressive by lowering `min_quality`. 
+   2. Disable `integration_assisted_clustering`. If this improves the situation turn it back on but make sure you have lowered `kinematics_node/omega_max` to about 4 rad/s otherwise try changing the value of `omega_factor`.
 1. *It fails almost all the time, stops too late for stoplines and lane following is bad* - If you have been going for a while (more than 30 minutes) this is probably caused by thermal throttling, shutdown the `proj-lfi` container and let the Raspberry Pi cool down.
 
 ## Measuring latency with ROS message timestamps
